@@ -1,0 +1,68 @@
+plugins {
+    id 'com.gradleup.shadow' version '8.3.0'
+    id 'java'
+    id 'maven-publish'
+}
+
+group = project.maven_group
+version = project.version
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation shadow('com.google.code.gson:gson:2.10.1')
+    compileOnly 'org.jetbrains:annotations:24.1.0'
+}
+
+shadowJar {
+    minimize()
+}
+
+shadowJar {
+    manifest {
+        attributes 'Implementation-Title': 'mrpack4server',
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': 'pb4.eu',
+                'Main-Class': 'eu.pb4.mrpackserver.Main'
+    }
+    minimize()
+    relocate 'com.google.gson', 'eu.pb4.mrpackserver.lib.gson'
+    archiveClassifier.set(null)
+}
+
+var env = System.getenv();
+
+// configure the maven publication
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            // add all the jars that should be included when publishing to maven
+            artifact(shadowJar) {
+                builtBy shadowJar
+            }
+        }
+    }
+
+    // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+    repositories {
+        // Add repositories to publish to here.
+        // Notice: This block does NOT have the same function as the block in the top level.
+        // The repositories here will be used for publishing your artifact, not for
+        // retrieving dependencies.
+        repositories {
+            if (env.MAVEN_URL) {
+                maven {
+                    credentials {
+                        username env.MAVEN_USERNAME
+                        password env.MAVEN_PASSWORD
+                    }
+                    url env.MAVEN_URL
+                }
+            } else {
+                mavenLocal()
+            }
+        }
+    }
+}
