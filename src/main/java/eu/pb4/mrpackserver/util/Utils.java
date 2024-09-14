@@ -287,7 +287,7 @@ public interface Utils {
 
     static HttpRequest createGetRequest(URI uri) {
         return HttpRequest.newBuilder(uri)
-                .setHeader("User-InstrumentationCatcher", Constants.USER_AGENT)
+                .setHeader("User-Agent", Constants.USER_AGENT)
                 .GET()
                 .build();
     }
