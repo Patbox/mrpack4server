@@ -27,9 +27,11 @@ public interface FabricInstallerLookup {
             var name = createName(mcVersion, fabricVersion, version);
             var file = path.resolve(name);
             if (!Files.exists(file)) {
-                Logger.info("Downloading Fabric Installer %s for Loader %s and Minecraft %s.", version, fabricVersion, mcVersion);
+                var display = "Fabric Installer " + version +" for Loader " + fabricVersion + " and Minecraft " + mcVersion;
+                Logger.info("Requesting download for %s.", display);
+
                 Files.createDirectories(file.getParent());
-                downloader.request(file, name, -1, null, List.of(
+                downloader.request(file, name, display, -1, null, List.of(
                         URI.create("https://meta.fabricmc.net/v2/versions/loader/" + mcVersion + "/" + fabricVersion + "/" + version + "/server/jar")
                 ));
             }

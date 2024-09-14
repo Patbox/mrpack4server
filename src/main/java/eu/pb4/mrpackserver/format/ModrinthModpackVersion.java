@@ -14,6 +14,9 @@ public class ModrinthModpackVersion {
     public String name = "";
     @SerializedName("version_number")
     public String versionNumber = "";
+
+    @SerializedName("version_type")
+    public String versionType = "";
     public String id = "";
 
     public List<File> files = List.of();

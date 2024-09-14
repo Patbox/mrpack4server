@@ -16,7 +16,7 @@ public class Constants {
     public static final String DATA_FOLDER = ".mrpack4server";
 
     public static final String FABRIC_INSTALLER_VERSIONS = "https://meta.fabricmc.net/v2/versions/installer";
-    public static final List<String> OVERWRITES = List.of("overrides", "server_overrides");
+    public static final List<String> OVERWRITES = List.of("/overrides", "/server_overrides");
     public static final List<String> NON_OVERWRITABLE = List.of("server.properties", "world", DATA_FOLDER);
 
     public static final Set<String> WHITELISTED_URLS = Set.of(
@@ -31,6 +31,6 @@ public class Constants {
 
     static {
         var x = Constants.class.getPackage();
-        USER_AGENT = x.getImplementationTitle() + " v" + x.getImplementationVersion() + "(" + x.getImplementationVendor() + ")";
+        USER_AGENT = x.getImplementationTitle() + " v" + x.getImplementationVersion() + " (" + x.getImplementationVendor() + ")";
     }
 }

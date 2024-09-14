@@ -3,10 +3,10 @@ package eu.pb4.mrpackserver.installer;
 import eu.pb4.mrpackserver.util.Constants;
 import eu.pb4.mrpackserver.format.InstanceInfo;
 import eu.pb4.mrpackserver.format.ModpackIndex;
+import eu.pb4.mrpackserver.util.FlexVerComparator;
 import eu.pb4.mrpackserver.util.Logger;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -21,8 +21,11 @@ public class MrPackInstaller {
     private final HashMap<String, String> newHashes;
     private final Path destinationOldModified;
     private final InstanceInfo currentInstanceData;
-    private String newLauncher;
     private final Set<String> whitelistedDomains;
+    @Nullable
+    private String newLauncher;
+    @Nullable
+    private String forgeInstaller;
 
     public MrPackInstaller(Path source, ModpackIndex index, Path destination, InstanceInfo data, HashMap<String, String> hashes, Set<String> whitelistedDomains) throws IOException {
         this.source = source;
@@ -42,8 +45,8 @@ public class MrPackInstaller {
         Files.createDirectories(this.destination);
     }
 
-    public void extractFolders() throws IOException {
-        Logger.info("Extracting files from mrpack!");
+    public void extractIncluded() throws IOException {
+        Logger.info("Extracting included files.");
         for (var base : Constants.OVERWRITES) {
             var path = this.source.resolve(base);
             if (Files.isDirectory(path)) {
@@ -121,10 +124,58 @@ public class MrPackInstaller {
     public void requestDownloads(FileDownloader downloader) throws Exception {
         if (this.currentInstanceData.runnablePath.isEmpty() || !this.currentInstanceData.dependencies.equals(this.index.dependencies) || !Files.exists(this.destination.resolve(this.currentInstanceData.runnablePath))) {
             var mcVersion = this.index.dependencies.get(Constants.MINECRAFT);
-            var fabricVersion = this.index.dependencies.get(Constants.FABRIC);
-            var fabric = FabricInstallerLookup.download(downloader, this.destination, mcVersion, fabricVersion);
-            if (fabric != null) {
-                this.newLauncher = fabric.name();
+            if (mcVersion == null) {
+                Logger.warn("Minecraft version is not set!");
+                Logger.warn("The modpack will be still installed, but it won't be able to start!");
+            } else if (this.index.dependencies.containsKey(Constants.FABRIC)) {
+                var version = this.index.dependencies.get(Constants.FABRIC);
+                if (FlexVerComparator.compare(version, "0.12.0") >= 0) {
+                    var starter = FabricInstallerLookup.download(downloader, this.destination, mcVersion, version);
+                    if (starter != null) {
+                        this.newLauncher = starter.name();
+                    }
+                } else {
+                    Logger.warn("Only Fabric Version 0.12.0 and newer is supported for launching!");
+                    Logger.warn("The modpack will be still installed, but it won't be able to start!");
+                }
+            } else if (this.index.dependencies.containsKey(Constants.NEOFORGE)) {
+                var version = this.index.dependencies.get(Constants.NEOFORGE);
+                var installer = mcVersion.equals("1.20.1")
+                        ? NeoForgeInstallerLookup.downloadLegacy(downloader, this.destination, mcVersion, version)
+                        : NeoForgeInstallerLookup.download(downloader, this.destination, version);
+                if (installer != null) {
+                    this.forgeInstaller = installer.name();
+                }
+                var starter = ForgeStarterLookup.download(downloader, this.destination);
+                if (starter != null) {
+                    this.newLauncher = starter.name();
+                }
+            } else if (this.index.dependencies.containsKey(Constants.FORGE)) {
+                var version = this.index.dependencies.get(Constants.FORGE);
+                if (FlexVerComparator.compare(mcVersion, "1.17.0") >= 0) {
+                    var installer = ForgeInstallerLookup.download(downloader, this.destination, mcVersion, version);
+                    if (installer != null) {
+                        this.forgeInstaller = installer.name();
+                    }
+                    var starter = ForgeStarterLookup.download(downloader, this.destination);
+                    if (starter != null) {
+                        this.newLauncher = starter.name();
+                    }
+                } else {
+                    Logger.warn("Only Forge for Minecraft 1.17 and newer is supported for launching!");
+                    Logger.warn("The modpack will be still installed, but it won't be able to start!");
+                }
+            } else if (this.index.dependencies.containsKey(Constants.QUILT)) {
+                Logger.warn("Quilt Loader is not currently supported!");
+                Logger.warn("The modpack will be still installed, but it won't be able to start!");
+            } else if (this.index.dependencies.size() == 1) {
+                var starter = VanillaInstallerLookup.download(downloader, this.destination, mcVersion);
+                if (starter != null) {
+                    this.newLauncher = starter.name();
+                }
+            } else {
+                Logger.warn("Modpack requires a modloader, which is not yet supported!");
+                Logger.warn("The modpack will be still installed, but it won't be able to start!");
             }
         }
         for (var file : this.index.files) {
@@ -154,7 +205,10 @@ public class MrPackInstaller {
     }
 
     public void cleanupOutdatedFiles() throws Exception {
-        Logger.info("Cleaning up old files...");
+        if (this.oldHashes.isEmpty()) {
+            return;
+        }
+        Logger.info("Cleaning up old existing files...");
         var hashExisting = new HashMap<String, byte[]>();
         for (var entry : this.oldHashes.keySet()) {
             var out = this.destination.resolve(entry);
@@ -233,5 +287,11 @@ public class MrPackInstaller {
     @Nullable
     public String getNewLauncher() {
         return this.newLauncher;
+    }
+
+
+    @Nullable
+    public String getForgeInstaller() {
+        return this.forgeInstaller;
     }
 }

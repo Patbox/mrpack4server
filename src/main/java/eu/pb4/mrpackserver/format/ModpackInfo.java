@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ModpackInfo {
@@ -17,10 +18,14 @@ public class ModpackInfo {
     public String projectId = "";
     @SerializedName("version_id")
     public String versionId = "";
-    @Nullable
-    public URI url;
     @SerializedName("whitelisted_domains")
-    public List<String> whitelistedDomains = List.of();
+    public List<String> whitelistedDomains = new ArrayList<>();
+    @Nullable
+    public String sha512 = null;
+    @Nullable
+    public URI url = null;
+    @Nullable
+    public Long size = null;
 
     public boolean isValid() {
         return !this.projectId.isBlank() && !this.versionId.isBlank();

@@ -20,7 +20,10 @@ import java.util.concurrent.ExecutionException;
 public final class FileDownloader {
     private final List<DownloadableEntry> entries = new ArrayList<>();
     public void request(Path out, String path, long fileSize, @Nullable String sha512, List<URI> downloads) {
-        this.entries.add(new DownloadableEntry(out, path, fileSize, sha512, downloads));
+        request(out, path, path, fileSize, sha512, downloads);
+    }
+    public void request(Path out, String path, String displayName, long fileSize, @Nullable String sha512, List<URI> downloads) {
+        this.entries.add(new DownloadableEntry(out, path, displayName, fileSize, sha512, downloads));
     }
 
     public List<String> downloadFiles(Map<String, String> hashes) throws InterruptedException, ExecutionException {
@@ -47,14 +50,14 @@ public final class FileDownloader {
                     Utils.createGetRequest(entry.downloads.get(0)),
                     HttpResponse.BodyHandlers.ofInputStream()
             ).thenAccept(x -> {
-                var hash = Utils.handleDownloadedFile(entry.out, x.body(), entry.path, entry.fileSize, entry.sha512);
+                var hash = Utils.handleDownloadedFile(entry.out, x.body(), entry.displayName, entry.fileSize, entry.sha512);
                 if (hash != null) {
                     synchronized (hashes) {
                         hashes.put(entry.path, HexFormat.of().formatHex(hash));
                     }
                 } else {
                     synchronized (failedDownloads) {
-                        failedDownloads.add(entry.path);
+                        failedDownloads.add(entry.displayName);
                     }
                 }
             }));
@@ -65,5 +68,5 @@ public final class FileDownloader {
         return failedDownloads;
     }
 
-    public record DownloadableEntry(Path out, String path, long fileSize, @Nullable String sha512, List<URI> downloads) {}
+    public record DownloadableEntry(Path out, String path, String displayName, long fileSize, @Nullable String sha512, List<URI> downloads) {}
 }

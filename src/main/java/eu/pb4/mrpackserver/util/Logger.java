@@ -20,7 +20,15 @@ public interface Logger {
 
         System.err.printf(Constants.LOG_ERROR_PREFIX + (text) + " %n", objects);
         if (throwable != null) {
-            throwable.printStackTrace(System.err);
+            try {
+                throwable.printStackTrace(System.err);
+            } catch (Throwable e) {
+                System.err.println("Failed to write exception! Using a fallback!");
+                System.err.println("Class: " + throwable.getClass().getName());
+                for (var traceElement : e.getStackTrace()) {
+                    System.err.println("\tat " + traceElement);
+                }
+            }
         }
     }
 }
