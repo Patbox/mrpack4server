@@ -2,13 +2,13 @@ package eu.pb4.mrpackserver;
 
 import eu.pb4.mrpackserver.format.InstanceInfo;
 import eu.pb4.mrpackserver.installer.ModrinthModpackLookup;
-import eu.pb4.mrpackserver.util.Constants;
-import eu.pb4.mrpackserver.util.FlexVerComparator;
-import eu.pb4.mrpackserver.util.Logger;
-import eu.pb4.mrpackserver.util.Utils;
+import eu.pb4.mrpackserver.launch.Launcher;
+import eu.pb4.mrpackserver.launch.LegacyExitBlocker;
+import eu.pb4.mrpackserver.util.*;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Objects;
 
 public class Main {
     public static void main(String[] args) throws Throwable {
@@ -25,7 +25,7 @@ public class Main {
         var instanceDataPath = instanceData.resolve("instance.json");
         var instanceInfo = new InstanceInfo();
         if (Files.exists(instanceDataPath)) {
-            instanceInfo = Utils.GSON.fromJson(Files.readString(instanceDataPath), InstanceInfo.class);
+            instanceInfo = InstanceInfo.read(Files.readString(instanceDataPath));
         }
 
         try {
@@ -59,9 +59,9 @@ public class Main {
                     Files.writeString(instanceDataPath, Utils.GSON.toJson(newInstance.info()));
                     instanceInfo = newInstance.info();
 
-                    newInstance.installer().run();
+                    LegacyExitBlocker.run(newInstance.installer());
 
-                    Logger.info("Installation of %s (%s) finished! Starting the server...", modpackInfo.getDisplayName(), modpackInfo.getDisplayVersion());
+                    Logger.info("Installation of %s (%s) finished!", modpackInfo.getDisplayName(), modpackInfo.getDisplayVersion());
                 } else if (!instanceInfo.runnablePath.isEmpty()) {
                     Logger.error("Failed to install modpack! Quitting...");
                     return;
@@ -74,12 +74,22 @@ public class Main {
             return;
         }
 
-
         if (instanceInfo.runnablePath.isEmpty()) {
-            Logger.warn("Server was installed successfully, but there is no server launcher defined!");
+            if (instanceInfo.dependencies.containsKey(Constants.FORGE)) {
+                Logger.warn("Server was installed successfully, but launching Forge 1.13-1.16 is not supported!");
+                Logger.warn("To work around it, rename 'forge-*.jar' to server launcher's name!");
+            } else {
+                Logger.warn("Server was installed successfully, but there is no server launcher defined!");
+                Logger.warn("This means the platform used by this modpack isn't supported!");
+                Logger.warn("Refer to platforms installation guide for more information!");
+            }
             return;
         }
 
-        Utils.launchJar(runPath.resolve(instanceInfo.runnablePath), args);
+        if (instanceInfo.forceSystemClasspath) {
+            Launcher.launchFinalInject(runPath.resolve(instanceInfo.runnablePath), args);
+        } else {
+            Launcher.launchFinal(Objects.requireNonNull(Launcher.getFromPath(runPath.resolve(instanceInfo.runnablePath))), (x) -> null, args);
+        }
     }
 }

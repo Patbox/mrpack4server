@@ -3,22 +3,20 @@ package eu.pb4.mrpackserver.util;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import eu.pb4.forgefx.ForgeInstallerFix;
 import eu.pb4.mrpackserver.format.InstanceInfo;
 import eu.pb4.mrpackserver.format.ModpackIndex;
 import eu.pb4.mrpackserver.format.ModpackInfo;
 import eu.pb4.mrpackserver.installer.FileDownloader;
 import eu.pb4.mrpackserver.installer.ModrinthModpackLookup;
 import eu.pb4.mrpackserver.installer.MrPackInstaller;
+import eu.pb4.mrpackserver.launch.Launcher;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.instrument.Instrumentation;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.io.PrintStream;
 import java.net.URI;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -28,61 +26,14 @@ import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.util.*;
-import java.util.jar.Attributes;
-import java.util.jar.JarFile;
 
 public interface Utils {
     Gson GSON = new GsonBuilder().disableHtmlEscaping().setLenient().create();
 
-    static boolean launchJar(Path path, String... args) {
-        String mainClass;
-        String launcherAgentClass = null;
-
-        try (var jarFile = new JarFile(path.toFile())) {
-            mainClass = jarFile.getManifest().getMainAttributes().getValue(Attributes.Name.MAIN_CLASS);
-            launcherAgentClass = jarFile.getManifest().getMainAttributes().getValue("Launcher-Agent-Class");
-            if (mainClass == null) {
-                Logger.error("The '%s' is missing main class!!", path);
-                return false;
-            }
-        } catch (Throwable e) {
-            Logger.error("Failed to read data of '%s'!", e);
-            return false;
-        }
-
-        try (var launchClassLoader = new URLClassLoader(new URL[]{ path.toUri().toURL() })) {
-            if (launcherAgentClass != null) {
-                if (InstrumentationCatcher.exists()) {
-                    try {
-                        var m = launchClassLoader.loadClass(launcherAgentClass).getDeclaredMethod("agentmain", String.class, Instrumentation.class);
-                        m.setAccessible(true);
-                        var handle = MethodHandles.lookup().unreflect(m);
-                        handle.invoke("", InstrumentationCatcher.get());
-                    } catch (Throwable e) {
-                        Logger.error("Error occurred while invoking Launcher-Agent-Class!", e);
-                    }
-                } else {
-                    Logger.error("The executed jar requires Instrumentation, but it's not set up! This might be related to your launch arguments / java version!");
-                }
-            }
-
-            try {
-                var handle = MethodHandles.publicLookup().findStatic(launchClassLoader.loadClass(mainClass), "main", MethodType.methodType(void.class, String[].class));
-                handle.invoke((Object) args);
-                return true;
-            } catch (SecurityException e) {
-                return e.getMessage() != null && e.getMessage().equals("Success");
-            }
-        } catch (Throwable e) {
-            Logger.error("Exception occurred while executing '%s' with arguments '%s'!", path, String.join(" ", args), e);
-            return false;
-        }
-    }
-
     @Nullable
     static ModpackInfo resolveModpackInfo(Path currentDir) throws IOException {
         try (var data = Utils.class.getResourceAsStream("/modpack-info.json")) {
-            var x = GSON.fromJson(new String(Objects.requireNonNull(data).readAllBytes()), ModpackInfo.class);
+            var x = ModpackInfo.read(new String(Objects.requireNonNull(data).readAllBytes()));
 
             if (x.isValid()) {
                 return x;
@@ -93,7 +44,7 @@ public interface Utils {
 
         var possibleLocal = currentDir.resolve("modpack-info.json");
         if (Files.exists(possibleLocal)) {
-            var x = GSON.fromJson(Files.readString(possibleLocal), ModpackInfo.class);
+            var x = ModpackInfo.read(Files.readString(possibleLocal));
 
             if (x.isValid()) {
                 return x;
@@ -103,7 +54,7 @@ public interface Utils {
         var possibleMrpack = currentDir.resolve("local.mrpack");
         if (Files.exists(possibleMrpack)) {
             try (var zip = FileSystems.newFileSystem(possibleMrpack)) {
-                var index = Utils.GSON.fromJson(Files.readString(zip.getPath("modrinth.index.json")), ModpackIndex.class);
+                var index = ModpackIndex.read(Files.readString(zip.getPath("modrinth.index.json")));
                 if (!index.versionId.isEmpty() && !index.name.isEmpty()) {
                     var info = new ModpackInfo();
                     info.projectId = "<local>";
@@ -129,7 +80,7 @@ public interface Utils {
         }
 
         try (var zip = FileSystems.newFileSystem(mrpackFile)) {
-            var index = Utils.GSON.fromJson(Files.readString(zip.getPath("modrinth.index.json")), ModpackIndex.class);
+            var index = ModpackIndex.read(Files.readString(zip.getPath("modrinth.index.json")));
 
             { // Safety validation
                 var check = currentDir.toAbsolutePath();
@@ -170,35 +121,50 @@ public interface Utils {
             var newInstance = new InstanceInfo();
             newInstance.projectId = modpackInfo.projectId;
             newInstance.versionId = modpackInfo.versionId;
+            newInstance.forceSystemClasspath = handler.getNewLauncher() != null ? handler.forceSystemClasspath() : instance.forceSystemClasspath;
             newInstance.runnablePath = Objects.requireNonNullElse(handler.getNewLauncher(), instance.runnablePath);
             newInstance.dependencies.putAll(index.dependencies);
 
-            if (handler.getForgeInstaller() != null) {
-                return new InstallResult(newInstance, () -> {
-                    Logger.info("Running installer! Older (Neo)Forge installers will quit after success, requiring you to start the server again!");
-                    try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException ignored) {
-
-                    }
-                    var t = new Thread(() -> {
-                        for (var i = 0; i < 10; i ++) {
-                            System.out.println();
-                        }
-                        Logger.info("Installer finished, but forces the mrpack4server to exit! Start the server again to run it!");
-                        Logger.info("You should ignore instructions about deleting installer files, as it is not needed!");
-
-                    });
-                    Runtime.getRuntime().addShutdownHook(t);
-                    if (!launchJar(currentDir.resolve(handler.getForgeInstaller()), "--installServer")) {
-                        Logger.warn("Failed to execute the installer! See errors above.");
-                    }
-                    Runtime.getRuntime().removeShutdownHook(t);
-                });
+            if (handler.getInstaller() != null) {
+                var installer = handler.getInstaller();
+                return new InstallResult(newInstance, createInstallerRunner(currentDir.resolve(installer.path()), installer.args()));
             }
 
             return new InstallResult(newInstance, () -> {});
         }
+    }
+
+    static Runnable createInstallerRunner(Path path, String[] args) {
+        return () -> {
+            var t = new Thread(() -> {
+                for (var i = 0; i < 10; i ++) {
+                    System.out.println();
+                }
+                Logger.info("Installer finished, but forces the mrpack4server to exit! Start the server again to run it!");
+                Logger.info("You should ignore instructions about deleting installer files, as it is not needed!");
+
+            });
+            t.setDaemon(true);
+            Runtime.getRuntime().addShutdownHook(t);
+            var oldOut = System.out;
+            var oldErr = System.err;
+            System.setOut(new PrintStream(oldOut) {
+                private static final byte[] M1 = ("You can delete this installer file now if you wish" + System.lineSeparator()).getBytes();
+                private static final byte[] M2 = ("A problem installing was detected, install cannot continue" + System.lineSeparator()).getBytes();
+                @Override
+                public void write(byte[] buf) throws IOException {
+                    if (!Arrays.equals(buf, M1) && !Arrays.equals(buf, M2)) {
+                        super.write(buf);
+                    }
+                }
+            });
+            if (!Launcher.launchExec(path, ForgeInstallerFix::new, args)) {
+                Logger.warn("Failed to execute the installer! See errors above.");
+            }
+            System.setOut(oldOut);
+            System.setErr(oldErr);
+            Runtime.getRuntime().removeShutdownHook(t);
+        };
     }
 
     @Nullable

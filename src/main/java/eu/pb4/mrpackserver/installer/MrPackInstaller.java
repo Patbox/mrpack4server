@@ -25,7 +25,8 @@ public class MrPackInstaller {
     @Nullable
     private String newLauncher;
     @Nullable
-    private String forgeInstaller;
+    private Installer installer;
+    private boolean forceSystemClasspath = false;
 
     public MrPackInstaller(Path source, ModpackIndex index, Path destination, InstanceInfo data, HashMap<String, String> hashes, Set<String> whitelistedDomains) throws IOException {
         this.source = source;
@@ -135,39 +136,68 @@ public class MrPackInstaller {
                         this.newLauncher = starter.name();
                     }
                 } else {
-                    Logger.warn("Only Fabric Version 0.12.0 and newer is supported for launching!");
-                    Logger.warn("The modpack will be still installed, but it won't be able to start!");
+                    var installer = FabricInstallerLookup.downloadGeneric(downloader, this.destination);
+                    if (installer != null) {
+                        this.installer = new Installer(installer.name(), "server", "-mcversion", mcVersion, "-loader", version);
+                    }
+
+                    this.newLauncher = "fabric-server-launch.jar";
+                    var propPath = this.destination.resolve("fabric-server-launcher.properties");
+                    Files.deleteIfExists(propPath);
+                    var vanilla = VanillaInstallerLookup.download(downloader, this.destination, mcVersion);
+                    if (vanilla != null) {
+                        Files.writeString(propPath, "serverJar=" + vanilla.name());
+                    }
                 }
             } else if (this.index.dependencies.containsKey(Constants.NEOFORGE)) {
+                this.forceSystemClasspath = true;
                 var version = this.index.dependencies.get(Constants.NEOFORGE);
                 var installer = mcVersion.equals("1.20.1")
                         ? NeoForgeInstallerLookup.downloadLegacy(downloader, this.destination, mcVersion, version)
                         : NeoForgeInstallerLookup.download(downloader, this.destination, version);
                 if (installer != null) {
-                    this.forgeInstaller = installer.name();
+                    this.installer = new Installer(installer.name(), "--installServer");
                 }
                 var starter = ForgeStarterLookup.download(downloader, this.destination);
                 if (starter != null) {
                     this.newLauncher = starter.name();
                 }
             } else if (this.index.dependencies.containsKey(Constants.FORGE)) {
+                this.forceSystemClasspath = true;
                 var version = this.index.dependencies.get(Constants.FORGE);
                 if (FlexVerComparator.compare(mcVersion, "1.17.0") >= 0) {
                     var installer = ForgeInstallerLookup.download(downloader, this.destination, mcVersion, version);
                     if (installer != null) {
-                        this.forgeInstaller = installer.name();
+                        this.installer = new Installer(installer.name(), "--installServer");
                     }
                     var starter = ForgeStarterLookup.download(downloader, this.destination);
                     if (starter != null) {
                         this.newLauncher = starter.name();
                     }
                 } else {
-                    Logger.warn("Only Forge for Minecraft 1.17 and newer is supported for launching!");
-                    Logger.warn("The modpack will be still installed, but it won't be able to start!");
+                    var installer = ForgeInstallerLookup.download(downloader, this.destination, mcVersion, version);
+                    if (installer != null) {
+                        this.installer = new Installer(installer.name(), "--installServer");
+                    }
+
+                    this.newLauncher = "forge-" + mcVersion + "-" + version + ".jar";
                 }
             } else if (this.index.dependencies.containsKey(Constants.QUILT)) {
-                Logger.warn("Quilt Loader is not currently supported!");
-                Logger.warn("The modpack will be still installed, but it won't be able to start!");
+                this.forceSystemClasspath = true;
+                var version = this.index.dependencies.get(Constants.QUILT);
+                var installer = QuiltInstallerLookup.download(downloader, this.destination);
+                if (installer != null) {
+                    this.installer = new Installer(installer.name(), "install", "server", mcVersion, version, "--install-dir=./");
+                }
+
+                this.newLauncher = "quilt-server-launch.jar";
+
+                var propPath = this.destination.resolve("quilt-server-launcher.properties");
+                Files.deleteIfExists(propPath);
+                var vanilla = VanillaInstallerLookup.download(downloader, this.destination, mcVersion);
+                if (vanilla != null) {
+                    Files.writeString(propPath, "serverJar=" + vanilla.name());
+                }
             } else if (this.index.dependencies.size() == 1) {
                 var starter = VanillaInstallerLookup.download(downloader, this.destination, mcVersion);
                 if (starter != null) {
@@ -254,6 +284,7 @@ public class MrPackInstaller {
                 Files.deleteIfExists(this.destination.resolve(entry));
             } else {
                 Files.createDirectories(this.destinationOldModified.resolve(entry).getParent());
+                Files.deleteIfExists(this.destinationOldModified.resolve(entry));
                 Files.move(this.destination.resolve(entry), this.destinationOldModified.resolve(entry));
                 Logger.info("File '%s' was modified, but modpack required it to be removed! Moving it to '%s'", entry, "old_modified_files/" + entry);
                 Files.deleteIfExists(this.destination.resolve(entry));
@@ -291,7 +322,13 @@ public class MrPackInstaller {
 
 
     @Nullable
-    public String getForgeInstaller() {
-        return this.forgeInstaller;
+    public Installer getInstaller() {
+        return this.installer;
     }
+
+    public boolean forceSystemClasspath() {
+        return this.forceSystemClasspath;
+    }
+
+    public record Installer(String path, String... args) {}
 }

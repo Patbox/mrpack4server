@@ -1,6 +1,7 @@
 package eu.pb4.mrpackserver.format;
 
 import eu.pb4.mrpackserver.util.Constants;
+import eu.pb4.mrpackserver.util.Utils;
 
 import java.net.URI;
 import java.net.URL;
@@ -15,6 +16,10 @@ public class ModpackIndex {
     public String summary = "";
     public List<FileEntry> files = List.of();
     public HashMap<String, String> dependencies = new HashMap<>();
+
+    public static ModpackIndex read(String s) {
+        return Utils.GSON.fromJson(s, ModpackIndex.class);
+    }
     public static class FileEntry {
         public String path = "";
         public HashMap<String, String> hashes = new HashMap<>();

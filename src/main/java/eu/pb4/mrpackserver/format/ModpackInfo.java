@@ -1,6 +1,7 @@
 package eu.pb4.mrpackserver.format;
 
 import com.google.gson.annotations.SerializedName;
+import eu.pb4.mrpackserver.util.Utils;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URI;
@@ -37,5 +38,13 @@ public class ModpackInfo {
 
     public String getDisplayVersion() {
         return this.displayVersion != null ? this.displayVersion : this.versionId;
+    }
+
+    public static ModpackInfo read(String s) {
+        return Utils.GSON.fromJson(s, ModpackInfo.class);
+    }
+
+    public String toJson() {
+        return Utils.GSON.toJson(this);
     }
 }

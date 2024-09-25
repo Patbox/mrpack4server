@@ -29,7 +29,7 @@ public interface NeoForgeInstallerLookup {
             }
             return new Result(name, file);
         } catch (Throwable e) {
-            Logger.warn("Failed to lookup NeoForge Server Installer installer!", e);
+            Logger.warn("Failed to lookup NeoForge Server Installer!", e);
         }
         return null;
     }

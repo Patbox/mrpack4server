@@ -1,3 +1,5 @@
+import kotlin.jvm.functions.Function1
+
 plugins {
     id 'com.gradleup.shadow' version '8.3.0'
     id 'xyz.wagyourtail.jvmdowngrader' version '1.1.3'
@@ -27,20 +29,49 @@ shadowJar {
                 'Implementation-Version': project.version,
                 'Implementation-Vendor': 'pb4.eu',
                 'Main-Class': 'eu.pb4.mrpackserver.Main',
-                'Launcher-Agent-Class': 'eu.pb4.mrpackserver.util.InstrumentationCatcher'
+                'Launcher-Agent-Class': 'eu.pb4.mrpackserver.util.InstrumentationCatcher',
+                'Agent-Class': 'eu.pb4.mrpackserver.util.InstrumentationCatcher',
+                'Premain-Class': 'eu.pb4.mrpackserver.util.InstrumentationCatcher'
     }
-    minimize()
     relocate 'com.google.gson', 'eu.pb4.mrpackserver.lib.gson'
+    minimize()
     archiveClassifier.set(null)
 }
 
-downgradeJar {
+task downgradeJar8(type: xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar) {
+    inputFile = tasks.shadowJar.archiveFile
+    downgradeTo = JavaVersion.VERSION_1_8 // default
     archiveClassifier.set("jvm8-dev")
 }
 
-shadeDowngradedApi {
+task shadeDowngradedApi8(type: xyz.wagyourtail.jvmdg.gradle.task.ShadeJar) {
+    inputFile = downgradeJar8.archiveFile
     archiveClassifier.set("jvm8")
 }
+
+task downgradeJar16(type: xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar) {
+    inputFile = tasks.shadowJar.archiveFile
+    downgradeTo = JavaVersion.VERSION_16 // default
+    archiveClassifier.set("jvm16-dev")
+}
+
+task shadeDowngradedApi16(type: xyz.wagyourtail.jvmdg.gradle.task.ShadeJar) {
+    inputFile = downgradeJar16.archiveFile
+    archiveClassifier.set("jvm16")
+}
+
+task downgradeJar17(type: xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar) {
+    inputFile = tasks.shadowJar.archiveFile
+    downgradeTo = JavaVersion.VERSION_17 // default
+    archiveClassifier.set("jvm17-dev")
+}
+
+task shadeDowngradedApi17(type: xyz.wagyourtail.jvmdg.gradle.task.ShadeJar) {
+    inputFile = downgradeJar17.archiveFile
+    archiveClassifier.set("jvm17")
+}
+
+
 
 var env = System.getenv();
 
@@ -51,6 +82,17 @@ publishing {
             // add all the jars that should be included when publishing to maven
             artifact(shadowJar) {
                 builtBy shadowJar
+            }
+            artifact(shadeDowngradedApi8) {
+                builtBy shadeDowngradedApi8
+            }
+
+            artifact(shadeDowngradedApi16) {
+                builtBy shadeDowngradedApi16
+            }
+
+            artifact(shadeDowngradedApi17) {
+                builtBy shadeDowngradedApi17
             }
         }
     }

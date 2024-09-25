@@ -71,7 +71,7 @@ public class Create {
         Files.copy(inputJarPath, outputJarPath);
 
         try (var fs = FileSystems.newFileSystem(outputJarPath)) {
-            Files.writeString(fs.getPath("modpack-info.json"), Utils.GSON.toJson(info));
+            Files.writeString(fs.getPath("modpack-info.json"), info.toJson());
         }
 
         Logger.info("Done! Bundled file exists as '%s'", outName);

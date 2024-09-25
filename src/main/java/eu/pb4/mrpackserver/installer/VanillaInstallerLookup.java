@@ -26,14 +26,14 @@ public interface VanillaInstallerLookup {
             var display = "Minecraft Vanilla " + mcVersion;
             var client = Utils.createHttpClient();
             var res = client.send(Utils.createGetRequest(URI.create(VERSION_LIST)), HttpResponse.BodyHandlers.ofString());
-            var versions = Utils.GSON.fromJson(res.body(), VanillaVersionList.class);
+            var versions = VanillaVersionList.read(res.body());
             var version = versions.versions.stream().filter(x -> x.id.equals(mcVersion)).findFirst();
             if (version.isEmpty()) {
                 Logger.error("Failed to find %s!", display);
                 return null;
             }
-            var res2 = client.send(Utils.createGetRequest(URI.create(VERSION_LIST)), HttpResponse.BodyHandlers.ofString());
-            var versionData = Utils.GSON.fromJson(res2.body(), VanillaVersionData.class).downloads.get("server");
+            var res2 = client.send(Utils.createGetRequest(URI.create(version.get().url)), HttpResponse.BodyHandlers.ofString());
+            var versionData = VanillaVersionData.read(res2.body()).downloads.get("server");
             if (versionData == null) {
                 Logger.error("Failed to find server file for %s!", display);
                 return null;

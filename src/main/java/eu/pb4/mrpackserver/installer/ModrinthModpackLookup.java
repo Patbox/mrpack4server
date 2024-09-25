@@ -47,7 +47,7 @@ public interface ModrinthModpackLookup {
                 return null;
             }
 
-            return Utils.GSON.fromJson(res.body(), ModrinthModpackVersion.TYPE);
+            return ModrinthModpackVersion.read(res.body());
         } catch (Throwable e) {
             Logger.error("Failed to lookup modpack files for %s (%s)!", displayName, projectId, e);
             return null;

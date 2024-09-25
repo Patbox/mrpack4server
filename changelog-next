@@ -1,0 +1,6 @@
+- Added support for versions of Fabric Loader older than 0.12.0 (aka all Loader versions should be supported now)!
+- Added support for Quilt Loader.
+- Added support for Forge 1.16.5 and older (as long as installer runs and file structure matches it will work, only tested with 1.16.5 and 1.12.2).
+- Forge Installer (any version) should no longer exit after running.
+- Added downgraded releases for Java 16 and Java 17.
+- Fixed issue where moving modified old files, threw exception if path was already used.
