@@ -1,6 +1,7 @@
-- Added support for versions of Fabric Loader older than 0.12.0 (aka all Loader versions should be supported now)!
-- Added support for Quilt Loader.
-- Added support for Forge 1.16.5 and older (as long as installer runs and file structure matches it will work, only tested with 1.16.5 and 1.12.2).
-- Forge Installer (any version) should no longer exit after running.
-- Added downgraded releases for Java 16 and Java 17.
-- Fixed issue where moving modified old files, threw exception if path was already used.
+- Added support for first-run setup when no configuration is present.
+  - If modpack is not defined, it will ask you to provide url, id or name.
+  - If url is provided, it will automatically extract modpack id and optionally the version (if not set, it will ask for it).
+  - If id is provided, it will use it to lookup the pack, then require selecting version.
+  - Otherwise it will search for the modpack by name, allowing you to select it. After that you need to select the version.
+- Improved handling of hashes and old file cleaning. It should now do better job and preserve modified, but not updated files.
+- Added support for non SHA-512 hashes. SHA-512 is still used for modpack file validation.

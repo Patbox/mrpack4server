@@ -4,7 +4,6 @@ import eu.pb4.mrpackserver.util.Constants;
 import eu.pb4.mrpackserver.util.Utils;
 
 import java.net.URI;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 
@@ -18,7 +17,7 @@ public class ModpackIndex {
     public HashMap<String, String> dependencies = new HashMap<>();
 
     public static ModpackIndex read(String s) {
-        return Utils.GSON.fromJson(s, ModpackIndex.class);
+        return Utils.GSON_MAIN.fromJson(s, ModpackIndex.class);
     }
     public static class FileEntry {
         public String path = "";

@@ -1,6 +1,9 @@
 package eu.pb4.mrpackserver.util;
 
+import eu.pb4.mrpackserver.format.ModpackInfo;
+
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class Constants {
@@ -9,8 +12,9 @@ public class Constants {
     public static final String FORGE = "forge";
     public static final String NEOFORGE = "neoforge";
     public static final String MINECRAFT = "minecraft";
-    public static final String HASH = "sha512";
 
+    public static final String MODRINTH_HASH = "sha512";
+    public static final String DEFAULT_HASH = "SHA-512";
 
     public static final String USER_AGENT;
     public static final String DATA_FOLDER = ".mrpack4server";
@@ -30,7 +34,18 @@ public class Constants {
     public static final String LOG_ERROR_PREFIX = "[mrpack4server | ERROR] ";
 
     static {
+        String extraFlavor = "";
+        try (var data = Constants.class.getResourceAsStream("/modpack-info.json")) {
+            var x = ModpackInfo.read(new String(Objects.requireNonNull(data).readAllBytes()));
+
+            if (x.isValid()) {
+                extraFlavor = " / conf: " + x.getDisplayName() + " ver: " + x.getDisplayVersion();
+            }
+        } catch (Throwable throwable) {
+            // ignored
+        }
+
         var x = Constants.class.getPackage();
-        USER_AGENT = x.getImplementationTitle() + " v" + x.getImplementationVersion() + " (" + x.getImplementationVendor() + ")";
+        USER_AGENT = x.getImplementationTitle() + " v" + x.getImplementationVersion() + " (" + x.getImplementationVendor() + extraFlavor + ")";
     }
 }

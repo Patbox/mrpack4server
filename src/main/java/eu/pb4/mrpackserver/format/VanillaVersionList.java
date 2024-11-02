@@ -10,7 +10,7 @@ public class VanillaVersionList {
     public List<Version> versions = List.of();
 
     public static VanillaVersionList read(String s) {
-        return Utils.GSON.fromJson(s, VanillaVersionList.class);
+        return Utils.GSON_MAIN.fromJson(s, VanillaVersionList.class);
     }
     public static class Version {
         public String id = "";

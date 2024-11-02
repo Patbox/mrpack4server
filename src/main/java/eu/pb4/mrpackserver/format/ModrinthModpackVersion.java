@@ -23,7 +23,7 @@ public class ModrinthModpackVersion {
     public List<File> files = List.of();
 
     public static List<ModrinthModpackVersion> read(String s) {
-        return Utils.GSON.fromJson(s, TYPE);
+        return Utils.GSON_MAIN.fromJson(s, TYPE);
     }
 
     public static class File {

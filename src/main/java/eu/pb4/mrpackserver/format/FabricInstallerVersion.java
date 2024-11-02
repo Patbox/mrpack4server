@@ -8,11 +8,10 @@ import java.util.List;
 public class FabricInstallerVersion {
     private static final TypeToken<List<FabricInstallerVersion>> TYPE = new TypeToken<>() {};
     public String url = "";
-    public String maven = "";
     public String version = "";
     public boolean stable = false;
 
     public static List<FabricInstallerVersion> read(String s) {
-        return Utils.GSON.fromJson(s, TYPE);
+        return Utils.GSON_MAIN.fromJson(s, TYPE);
     }
 }

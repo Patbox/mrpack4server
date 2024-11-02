@@ -8,7 +8,7 @@ public class VanillaVersionData {
     public Map<String, File> downloads = Map.of();
 
     public static VanillaVersionData read(String s) {
-        return Utils.GSON.fromJson(s, VanillaVersionData.class);
+        return Utils.GSON_MAIN.fromJson(s, VanillaVersionData.class);
     }
 
     public static class File {

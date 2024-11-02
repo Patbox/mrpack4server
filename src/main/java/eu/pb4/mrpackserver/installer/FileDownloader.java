@@ -1,6 +1,7 @@
 package eu.pb4.mrpackserver.installer;
 
 import eu.pb4.mrpackserver.util.Constants;
+import eu.pb4.mrpackserver.util.HashData;
 import eu.pb4.mrpackserver.util.Logger;
 import eu.pb4.mrpackserver.util.Utils;
 import org.jetbrains.annotations.Nullable;
@@ -19,14 +20,14 @@ import java.util.concurrent.ExecutionException;
 
 public final class FileDownloader {
     private final List<DownloadableEntry> entries = new ArrayList<>();
-    public void request(Path out, String path, long fileSize, @Nullable String sha512, List<URI> downloads) {
-        request(out, path, path, fileSize, sha512, downloads);
+    public void request(Path out, String path, long fileSize, @Nullable HashData hashData, List<URI> downloads) {
+        request(out, path, path, fileSize, hashData, downloads);
     }
-    public void request(Path out, String path, String displayName, long fileSize, @Nullable String sha512, List<URI> downloads) {
-        this.entries.add(new DownloadableEntry(out, path, displayName, fileSize, sha512, downloads));
+    public void request(Path out, String path, String displayName, long fileSize, @Nullable HashData hashData, List<URI> downloads) {
+        this.entries.add(new DownloadableEntry(out, path, displayName, fileSize, hashData, downloads));
     }
 
-    public List<String> downloadFiles(Map<String, String> hashes) throws InterruptedException, ExecutionException {
+    public List<String> downloadFiles(Map<String, HashData> hashes) throws InterruptedException, ExecutionException {
         if (this.entries.isEmpty()) {
             return List.of();
         }
@@ -50,10 +51,10 @@ public final class FileDownloader {
                     Utils.createGetRequest(entry.downloads.get(0)),
                     HttpResponse.BodyHandlers.ofInputStream()
             ).thenAccept(x -> {
-                var hash = Utils.handleDownloadedFile(entry.out, x.body(), entry.displayName, entry.fileSize, entry.sha512);
+                var hash = Utils.handleDownloadedFile(entry.out, x.body(), entry.displayName, entry.fileSize, entry.hashData);
                 if (hash != null) {
                     synchronized (hashes) {
-                        hashes.put(entry.path, HexFormat.of().formatHex(hash));
+                        hashes.put(entry.path, hash);
                     }
                 } else {
                     synchronized (failedDownloads) {
@@ -68,5 +69,5 @@ public final class FileDownloader {
         return failedDownloads;
     }
 
-    public record DownloadableEntry(Path out, String path, String displayName, long fileSize, @Nullable String sha512, List<URI> downloads) {}
+    public record DownloadableEntry(Path out, String path, String displayName, long fileSize, @Nullable HashData hashData, List<URI> downloads) {}
 }

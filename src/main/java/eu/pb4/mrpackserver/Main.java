@@ -17,9 +17,17 @@ public class Main {
         var modpackInfo = Utils.resolveModpackInfo(runPath);
 
         if (modpackInfo == null) {
-            Logger.error("Couldn't find modpack definition!");
-            return;
+            Logger.info("Couldn't find modpack definition! Creating a new one...");
+            Utils.configureModpack(runPath);
+
+            modpackInfo = Utils.resolveModpackInfo(runPath);
+            if (modpackInfo == null) {
+                Logger.error("Couldn't find modpack definition! Exiting...");
+                return;
+            }
         }
+
+
 
         var instanceData = runPath.resolve(Constants.DATA_FOLDER);
         var instanceDataPath = instanceData.resolve("instance.json");
@@ -47,7 +55,7 @@ public class Main {
                     modpackInfo.versionId = version.versionNumber();
                     modpackInfo.url = version.uri();
                     modpackInfo.size = version.size();
-                    modpackInfo.sha512 = version.hashes().get(Constants.HASH);
+                    modpackInfo.sha512 = version.hashes().get(Constants.MODRINTH_HASH);
                 }
             }
 
@@ -56,7 +64,7 @@ public class Main {
                 var newInstance = Utils.checkAndSetupModpack(modpackInfo, instanceInfo, runPath, instanceData);
                 if (newInstance != null) {
                     Files.deleteIfExists(instanceDataPath);
-                    Files.writeString(instanceDataPath, Utils.GSON.toJson(newInstance.info()));
+                    Files.writeString(instanceDataPath, Utils.GSON_MAIN.toJson(newInstance.info()));
                     instanceInfo = newInstance.info();
 
                     LegacyExitBlocker.run(newInstance.installer());
@@ -75,14 +83,9 @@ public class Main {
         }
 
         if (instanceInfo.runnablePath.isEmpty()) {
-            if (instanceInfo.dependencies.containsKey(Constants.FORGE)) {
-                Logger.warn("Server was installed successfully, but launching Forge 1.13-1.16 is not supported!");
-                Logger.warn("To work around it, rename 'forge-*.jar' to server launcher's name!");
-            } else {
-                Logger.warn("Server was installed successfully, but there is no server launcher defined!");
-                Logger.warn("This means the platform used by this modpack isn't supported!");
-                Logger.warn("Refer to platforms installation guide for more information!");
-            }
+            Logger.warn("Server was installed successfully, but there is no server launcher defined!");
+            Logger.warn("This means the platform used by this modpack isn't supported!");
+            Logger.warn("Refer to platforms installation guide for more information!");
             return;
         }
 

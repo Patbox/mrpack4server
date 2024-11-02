@@ -3,8 +3,13 @@ package eu.pb4.mrpackserver.util;
 import java.util.Arrays;
 
 public interface Logger {
+    boolean ALLOW_INLINE = false;
     static void info(String text, Object... objects) {
         System.out.printf(Constants.LOG_PREFIX + (text) + " %n", objects);
+    }
+
+    static void label(String text, Object... objects) {
+        System.out.append((text + " ").formatted(objects));
     }
 
     static void warn(String text, Object... objects) {

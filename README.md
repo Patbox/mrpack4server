@@ -1,7 +1,7 @@
 # mrpack4server
-mrpack4server is a "server launcher" that allows you to easily load and run any modpack from Modrinth
-(or just using `.mrpack` format) as a Minecraft Server. This tool doesn't require any additional arguments
-and can work as any other server jar (like vanilla provided one).
+mrpack4server is a "server launcher" that allows you to easily install and run any modpack from Modrinth
+(or one that's exported in `.mrpack` format) as a Minecraft Server on local machine or any hosting provider that supports custom jars.
+This tool doesn't require any additional arguments and can work as any other server jar (like vanilla provided one).
 
 ## Features:
 - For any users, usable standalone, for setup of any modpack by defining a single file.
@@ -19,6 +19,10 @@ with provided order:
 - `modpack-info.json` within server's root directory, for users to simple setup,
 - `local.mrpack` within server's root directory, making it directly use provided mrpack file instead of 
 pulling it from Modrinth.
+
+If neither of these is found, it will ask you to either provide link, project id or name of the modpack you want to install
+and then the version of it (suggesting latest one). It will then create local `modpack-info.json` file. 
+You can then either update target version by editing that file or by removing it and rerunning the initial setup.
 
 Default/main jar only supports Java 21 (`mrpack4server-X.Y.Z.jar`). If you want to run it on older Java version you can use:
 - `mrpack4server-X.Y.Z-jvm8.jar` for Java 8 and above,

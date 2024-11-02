@@ -41,10 +41,10 @@ public class ModpackInfo {
     }
 
     public static ModpackInfo read(String s) {
-        return Utils.GSON.fromJson(s, ModpackInfo.class);
+        return Utils.GSON_MAIN.fromJson(s, ModpackInfo.class);
     }
 
     public String toJson() {
-        return Utils.GSON.toJson(this);
+        return Utils.GSON_PRETTY.toJson(this);
     }
 }

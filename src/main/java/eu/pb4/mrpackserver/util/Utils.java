@@ -4,9 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import eu.pb4.forgefx.ForgeInstallerFix;
-import eu.pb4.mrpackserver.format.InstanceInfo;
-import eu.pb4.mrpackserver.format.ModpackIndex;
-import eu.pb4.mrpackserver.format.ModpackInfo;
+import eu.pb4.mrpackserver.format.*;
 import eu.pb4.mrpackserver.installer.FileDownloader;
 import eu.pb4.mrpackserver.installer.ModrinthModpackLookup;
 import eu.pb4.mrpackserver.installer.MrPackInstaller;
@@ -17,9 +15,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,10 +28,12 @@ import java.security.MessageDigest;
 import java.util.*;
 
 public interface Utils {
-    Gson GSON = new GsonBuilder().disableHtmlEscaping().setLenient().create();
+    Gson GSON_MAIN = new GsonBuilder().disableHtmlEscaping().setLenient().registerTypeHierarchyAdapter(HashData.class, new HashData.Serializer()).create();
+    Gson GSON_PRETTY = new GsonBuilder().disableHtmlEscaping().setLenient().setPrettyPrinting().registerTypeHierarchyAdapter(HashData.class, new HashData.Serializer()).create();
 
     @Nullable
     static ModpackInfo resolveModpackInfo(Path currentDir) throws IOException {
+
         try (var data = Utils.class.getResourceAsStream("/modpack-info.json")) {
             var x = ModpackInfo.read(new String(Objects.requireNonNull(data).readAllBytes()));
 
@@ -93,9 +95,9 @@ public interface Utils {
                 }
             }
             var hashPath = instanceDataDir.resolve("hashes.json");
-            var hashes = new HashMap<String, String>();
+            var hashes = new HashMap<String, HashData>();
             if (Files.exists(hashPath)) {
-                hashes = Utils.GSON.fromJson(Files.readString(hashPath), new TypeToken<HashMap<String, String >>() {});
+                hashes = Utils.GSON_MAIN.fromJson(Files.readString(hashPath), new TypeToken<HashMap<String, HashData>>() {});
             }
             var whitelistedDomains = new HashSet<String>();
             whitelistedDomains.addAll(Constants.WHITELISTED_URLS);
@@ -105,18 +107,20 @@ public interface Utils {
 
             var handler = new MrPackInstaller(zip.getPath(""), index, currentDir, instance, hashes, whitelistedDomains);
             handler.prepareFolders();
-            handler.cleanupOutdatedFiles();
+            var localExistingHashes = handler.getLocalFileUpdatedHashes();
             var x = new FileDownloader();
-            handler.requestDownloads(x);
+            handler.requestDownloads(x, localExistingHashes);
             var failed = x.downloadFiles(handler.getHashes());
             if (!failed.isEmpty()) {
                 Logger.error("Failed to download provided files: \n- ", String.join("\n- ", failed));
                 return null;
             }
-            handler.extractIncluded();
+            handler.extractIncluded(localExistingHashes);
+
+            handler.cleanupLeftoverFiles(localExistingHashes);
 
             Files.deleteIfExists(hashPath);
-            Files.writeString(hashPath, Utils.GSON.toJson(handler.getHashes()));
+            Files.writeString(hashPath, Utils.GSON_MAIN.toJson(handler.getHashes()));
 
             var newInstance = new InstanceInfo();
             newInstance.projectId = modpackInfo.projectId;
@@ -194,13 +198,13 @@ public interface Utils {
             }
             uri = result.uri();
             size = result.size();
-            hash = result.hashes().get(Constants.HASH);
+            hash = result.hashes().get(Constants.MODRINTH_HASH);
         }
 
         try {
             Files.createDirectories(modpackFile.getParent());
             var req = createHttpClient().send(createGetRequest(uri), HttpResponse.BodyHandlers.ofInputStream());
-            var x = handleDownloadedFile(modpackFile, req.body(), name, size, hash);
+            var x = handleDownloadedFile(modpackFile, req.body(), name, size, hash != null ? HashData.read(Constants.DEFAULT_HASH, hash) : null);
             if (x != null) {
                 return modpackFile;
             }
@@ -213,9 +217,17 @@ public interface Utils {
 
 
 
-    static byte @Nullable [] handleDownloadedFile(Path out, InputStream body, String displayName, long fileSize, @Nullable String sha512) {
-        try (var file = Files.newOutputStream(out)) {
-            var stream = new DigestInputStream(body, MessageDigest.getInstance("SHA-512"));
+    static @Nullable HashData handleDownloadedFile(Path out, InputStream body, String displayName, long fileSize, @Nullable HashData hashData) {
+        var tmpOut = out.getParent().resolve(out.getFileName().toString() + ".mrpack4server.tmp");
+        try {
+            Files.deleteIfExists(tmpOut);
+        } catch (Throwable e) {
+            Logger.error("Failed to remove leftover temporary file '%s'!", tmpOut, e);
+        }
+        boolean success = false;
+        try (var file = Files.newOutputStream(tmpOut)) {
+            var hashType = hashData != null ? hashData.type() : "SHA-512";
+            var stream = new DigestInputStream(body, MessageDigest.getInstance(hashType));
             stream.on(true);
             Logger.info("Downloading file '%s': 0%%", displayName);
             long current = 0;
@@ -233,17 +245,33 @@ public interface Utils {
                     Logger.info("Downloading file '%s': %s%%", displayName, fileSize != -1 ? String.valueOf(current * 100 / fileSize) : '?');
                 }
             }
+            file.flush();
             var hash = stream.getMessageDigest().digest();
-            if (sha512 == null || Arrays.equals(HexFormat.of().parseHex(sha512), hash)) {
+            if (hashData == null || Arrays.equals(hashData.hash(), hash)) {
+                success = true;
                 Logger.info("Finished downloading file '%s' successfully!", displayName);
-                return hash;
+                return new HashData(hashType, hash);
             } else {
-                Logger.warn("Couldn't validate file '%s'! Expected hash: %s, got: %s", displayName, sha512, HexFormat.of().formatHex(hash));
+                Logger.warn("Couldn't validate file '%s'! Expected hash: %s, got: %s", displayName, hashData.hashString(), HexFormat.of().formatHex(hash));
                 return null;
             }
         } catch (Throwable e) {
             Logger.error("Couldn't download file '%s' correctly!", displayName, e);
             return null;
+        } finally {
+            try {
+                if (success) {
+                    Files.move(tmpOut, out);
+                } else {
+                    Files.deleteIfExists(tmpOut);
+                }
+            } catch (Throwable e) {
+                if (success) {
+                    Logger.error("Failed to move temporary file to correct location '%s'!", out, e);
+                } else {
+                    Logger.error("Failed to remove temporary file '%s'!", tmpOut, e);
+                }
+            }
         }
     }
 
@@ -256,6 +284,156 @@ public interface Utils {
                 .setHeader("User-Agent", Constants.USER_AGENT)
                 .GET()
                 .build();
+    }
+
+    static void configureModpack(Path runPath) throws IOException, InterruptedException {
+        var scanner = new Scanner(System.in);
+        while (true) {
+            var newInfo = new ModpackInfo();
+            Logger.info("Provide modpack name, it's id or url linking to it");
+            Logger.label(">");
+            var data = scanner.nextLine();
+            boolean requestVersion = false;
+
+            if (data.startsWith("http://") || data.startsWith("https://")) {
+                try {
+                    var uri = URI.create(data);
+                    var parts = uri.getPath().split("/");
+
+                    var requestName = false;
+
+                    if (uri.getPath().endsWith(".mrpack")) {
+                        newInfo.projectId = parts[parts.length - 1].substring(".mrpack".length());
+                        newInfo.versionId = data;
+                        newInfo.url = uri;
+                    } else if (parts.length == 3 || parts.length == 4) {
+                        newInfo.projectId = parts[2];
+                        requestVersion = true;
+                        requestName = true;
+                    } else if (parts.length >= 5) {
+                        newInfo.projectId = parts[2];
+                        newInfo.versionId = parts[4];
+                        requestName = true;
+                    } else {
+                        Logger.error("Invalid url! %s");
+                        continue;
+                    }
+
+                    if (requestName) {
+                        var client = Utils.createHttpClient();
+                        var res = client.send(Utils.createGetRequest(URI.create("https://api.modrinth.com/v2/project/" + newInfo.projectId)), HttpResponse.BodyHandlers.ofString());
+                        if (res.statusCode() == 200) {
+                            var project = ModrinthProjectData.read(res.body());
+                            newInfo.displayName = project.title;
+                            requestVersion = true;
+                        }
+                    }
+                } catch (Throwable e) {
+                    Logger.error("Invalid url! %s");
+                    continue;
+                }
+            } else {
+                var client = Utils.createHttpClient();
+                var res = client.send(Utils.createGetRequest(URI.create("https://api.modrinth.com/v2/project/" + URLEncoder.encode(data, StandardCharsets.UTF_8))), HttpResponse.BodyHandlers.ofString());
+                if (res.statusCode() == 200) {
+                    var project = ModrinthProjectData.read(res.body());
+                    newInfo.projectId = project.slug;
+                    newInfo.displayName = project.title;
+                    requestVersion = true;
+                } else {
+                    res = client.send(Utils.createGetRequest(URI.create("https://api.modrinth.com/v2/search?query="
+                            + URLEncoder.encode(data, StandardCharsets.UTF_8) + "&facets=[[%22project_type:modpack%22]]")), HttpResponse.BodyHandlers.ofString());
+                    if (res.statusCode() != 200) {
+                        Logger.error("Failed to request Modrinth search!");
+                        return;
+                    }
+                    var search = ModrinthSearchData.read(res.body());
+
+                    if (search.hits.isEmpty()) {
+                        Logger.warn("Couldn't find any modpacks matching your description!");
+                        continue;
+                    }
+                    Logger.info("Found Modpacks:");
+
+                    for (int i = 0; i < Math.min(search.hits.size(), 9); i++) {
+                        var modpack = search.hits.get(i);
+                        Logger.info("%s > %s (%s) by %s", i + 1, modpack.title, modpack.slug, modpack.author);
+                    }
+                    while (true) {
+                        Logger.info("Select Modpack by number [1]:");
+                        Logger.label(">");
+                        data = scanner.nextLine();
+                        int id;
+                        if (data.isEmpty()) {
+                            id = 1;
+                        } else {
+                            try {
+                                id = Integer.parseInt(data);
+                            } catch (Throwable e) {
+                                id = Integer.MAX_VALUE;
+                            }
+
+                            if (id > search.hits.size()) {
+                                Logger.error("Invalid id, try again!");
+                                continue;
+                            }
+                        }
+                        var pack = search.hits.get(id - 1);
+                        newInfo.projectId = pack.slug;
+                        newInfo.displayName = pack.title;
+                        requestVersion = true;
+                        break;
+                    }
+                }
+            }
+            Logger.info("Selected Modpack: %s (%s)", newInfo.getDisplayName(), newInfo.projectId);
+
+            if (requestVersion) {
+                var versions = ModrinthModpackLookup.getVersions(newInfo.projectId, newInfo.getDisplayName());
+                if (versions == null || versions.isEmpty()) {
+                    Logger.error("No versions found for %s (%s)", newInfo.getDisplayName(), newInfo.projectId);
+                    continue;
+                }
+
+                while (true) {
+                    Logger.info("Select Version [%s]", versions.get(0).versionNumber);
+                    Logger.label(">");
+                    data = scanner.nextLine();
+                    if (data.isEmpty()) {
+                        data = versions.get(0).versionNumber;
+                        break;
+                    }
+
+                    if (data.equals(";;release") || data.equals(";;beta") || data.equals(";;alpha")) {
+                        break;
+                    }
+
+                    ModrinthModpackVersion ver = null;
+                    for (var version : versions) {
+                        if (version.versionNumber.equals(data) || version.name.equals(data) || version.id.equals(data)) {
+                            ver = version;
+                            break;
+                        }
+                    }
+
+                    if (ver != null) {
+                        data = ver.versionNumber;
+                        break;
+                    }
+                    Logger.error("%s is not a valid version of this modpack!: ", data);
+                }
+
+                newInfo.versionId = data;
+            }
+
+            if (!newInfo.versionId.isEmpty()) {
+                Logger.info("Selected Version: %s (%s)", newInfo.getDisplayVersion(), newInfo.versionId);
+            }
+
+
+            Files.writeString(runPath.resolve("modpack-info.json"), newInfo.toJson());
+            break;
+        }
     }
 
     record InstallResult(InstanceInfo info, Runnable installer) {}

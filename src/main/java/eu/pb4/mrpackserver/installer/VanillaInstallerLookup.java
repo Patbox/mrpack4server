@@ -3,6 +3,7 @@ package eu.pb4.mrpackserver.installer;
 import eu.pb4.mrpackserver.format.VanillaVersionData;
 import eu.pb4.mrpackserver.format.VanillaVersionList;
 import eu.pb4.mrpackserver.util.Constants;
+import eu.pb4.mrpackserver.util.HashData;
 import eu.pb4.mrpackserver.util.Logger;
 import eu.pb4.mrpackserver.util.Utils;
 import org.jetbrains.annotations.Nullable;
@@ -44,7 +45,7 @@ public interface VanillaInstallerLookup {
             if (!Files.exists(file)) {
                 Logger.info("Requesting download for %s.", display);
                 Files.createDirectories(file.getParent());
-                downloader.request(file, name, display, versionData.size, null, List.of(
+                downloader.request(file, name, display, versionData.size, HashData.read("SHA-1", versionData.sha1), List.of(
                         URI.create(versionData.url)
                 ));
             }
