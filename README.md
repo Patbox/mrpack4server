@@ -1,6 +1,6 @@
 # mrpack4server
 mrpack4server is a "server launcher" that allows you to easily install and run any modpack from Modrinth
-(or one that's exported in `.mrpack` format) as a Minecraft Server on local machine or any hosting provider that supports custom jars.
+(or one that's exported in `.mrpack` format) as a Minecraft Server on your local machine or any hosting provider that supports custom jars.
 This tool doesn't require any additional arguments and can work as any other server jar (like vanilla provided one).
 
 ## Features:
@@ -21,15 +21,15 @@ with provided order:
 pulling it from Modrinth.
 
 If neither of these is found, it will ask you to either provide link, project id or name of the modpack you want to install
-and then the version of it (suggesting latest one). It will then create local `modpack-info.json` file. 
-You can then either update target version by editing that file or by removing it and rerunning the initial setup.
+and then the version of it (suggesting latest one), which will be used to create local `modpack-info.json` file. 
+You can then either update target version by editing it or by removing the file and rerunning the initial setup.
 
 Default/main jar only supports Java 21 (`mrpack4server-X.Y.Z.jar`). If you want to run it on older Java version you can use:
 - `mrpack4server-X.Y.Z-jvm8.jar` for Java 8 and above,
 - `mrpack4server-X.Y.Z-jvm16.jar` for Java 16 and above,
 - `mrpack4server-X.Y.Z-jvm17.jar` for Java 17 and above.
 
-_These versions however don't override requirements of Minecraft/Loader itself. 
+These versions however don't override requirements of Minecraft/Loader itself. 
 For example, you still need Java to use Java 17 or above to run Minecraft 1.20.1 and Java 8 (but not newer!) to run Forge 1.16.5.
 
 You can create bundled variant by hand or by running `java -cp mrpack4server.jar eu.pb4.mrpackserver.Create`.
@@ -37,7 +37,7 @@ By default, without any arguments, it will copy currently provided `modpack-info
 where it mirrors all arguments from `modpack-info.json` (aka `--project_id my_modpack --version_id 1.2.3` will create jar with these defined).
 Additionally, you can use the `--out` argument to set output file path, by default being set to `--out server.jar`.
 
-### `modpack-info.json` format:_
+### `modpack-info.json` format:
 `modpack-info.json` is a regular json file without support for comments. Ones provided below are purely
 to make easier to describe things.
 ```json5
@@ -62,7 +62,9 @@ to make easier to describe things.
   // (Optional) Additional list of whitelisted domains, only useful for modpacks hosted outside Modrinth.
   "whitelisted_domains": [
     "files.pb4.eu" // Note it's just a domain, no protocol/ports/paths.
-  ]
+  ],
+  // (Optional) Allows to url used for requesting list of available versions, used by auto-updating feature (the ;; versions).
+  "version_list_url": "https://api.modrinth.com/v2/project/{PROJECT_ID}/versions"
 }
 ```
 

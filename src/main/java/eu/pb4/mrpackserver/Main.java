@@ -27,8 +27,6 @@ public class Main {
             }
         }
 
-
-
         var instanceData = runPath.resolve(Constants.DATA_FOLDER);
         var instanceDataPath = instanceData.resolve("instance.json");
         var instanceInfo = new InstanceInfo();
@@ -40,9 +38,11 @@ public class Main {
             boolean runLogic = true;
 
             if (modpackInfo.versionId.startsWith(";;")) {
+                Logger.info("Checking for updates for %s...", modpackInfo.getDisplayName());
+
                 var type = modpackInfo.versionId.substring(2);
                 var finalInstanceInfo = instanceInfo;
-                var version = ModrinthModpackLookup.findVersion(modpackInfo.projectId, modpackInfo.getDisplayName(), type, false,
+                var version = ModrinthModpackLookup.findVersion(modpackInfo.getVersionListUrl(), modpackInfo.projectId, modpackInfo.getDisplayName(), type, false,
                         x -> x.versionType.equals(type) && (finalInstanceInfo.versionId.isEmpty() || FlexVerComparator.compare(finalInstanceInfo.versionId, x.versionNumber) < 0));
 
                 if (version == null) {

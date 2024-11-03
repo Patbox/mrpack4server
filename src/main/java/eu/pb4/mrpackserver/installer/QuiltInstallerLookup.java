@@ -24,7 +24,6 @@ public interface QuiltInstallerLookup {
             var file = path.resolve(name);
             if (!Files.exists(file)) {
                 var display = "Quilt Installer " + VERSION;
-                Logger.info("Requesting download for %s.", display);
                 Files.createDirectories(file.getParent());
                 downloader.request(file, name, display, -1, null, List.of(
                         URI.create(STARTER_URL)

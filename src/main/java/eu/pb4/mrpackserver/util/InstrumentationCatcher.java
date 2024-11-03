@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class InstrumentationCatcher {
-    private static final boolean IS_JAVA_9 = FlexVerComparator.compare(System.getProperty("java.version"), "9") >= 0;
     private static Instrumentation instrumentation;
     public static void agentmain(String arg, Instrumentation instrumentation) {
         premain(arg, instrumentation);
@@ -17,7 +16,7 @@ public class InstrumentationCatcher {
     }
 
     public static void open(String module, String pkg) {
-        if (instrumentation != null && IS_JAVA_9) {
+        if (instrumentation != null && JavaVersion.IS_JAVA_9) {
             instrumentation.redefineModule(
                     ModuleLayer.boot().findModule(module).orElseThrow(),
                     Collections.emptySet(),

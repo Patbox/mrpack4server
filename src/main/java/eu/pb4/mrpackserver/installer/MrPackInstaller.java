@@ -1,11 +1,8 @@
 package eu.pb4.mrpackserver.installer;
 
-import eu.pb4.mrpackserver.util.Constants;
+import eu.pb4.mrpackserver.util.*;
 import eu.pb4.mrpackserver.format.InstanceInfo;
 import eu.pb4.mrpackserver.format.ModpackIndex;
-import eu.pb4.mrpackserver.util.FlexVerComparator;
-import eu.pb4.mrpackserver.util.HashData;
-import eu.pb4.mrpackserver.util.Logger;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -123,6 +120,30 @@ public class MrPackInstaller {
             }
         }
         Logger.info("Finished extracting files from mrpack!");
+    }
+
+    public boolean checkJavaVersion() {
+        var minecraft = this.index.dependencies.get(Constants.MINECRAFT);
+        if (!minecraft.startsWith("1.")) {
+            return true;
+        }
+
+        if (FlexVerComparator.compare(minecraft, "1.20.5-") >= 0 && !JavaVersion.IS_JAVA_21) {
+            Logger.error("Minecraft %s! only supports Java 21 or newer! You are currently using Java %s!", minecraft, Runtime.version().feature());
+            return false;
+        }else if (FlexVerComparator.compare(minecraft, "1.18-") >= 0 && !JavaVersion.IS_JAVA_17) {
+            Logger.error("Minecraft %s only supports Java 17 or newer! You are currently using Java %s!", minecraft, Runtime.version().feature());
+            return false;
+        } else if (FlexVerComparator.compare(minecraft, "1.17-") >= 0 && !JavaVersion.IS_JAVA_16) {
+            Logger.error("Minecraft %s only supports Java 16 or newer! You are currently using Java %s!", minecraft, Runtime.version().feature());
+            return false;
+        } else if (FlexVerComparator.compare(minecraft, "1.13-") > 0 && FlexVerComparator.compare(minecraft, "1.17-") < 0 && this.index.dependencies.containsKey(Constants.FORGE) && JavaVersion.IS_JAVA_9) {
+            Logger.error("Minecraft with Forge on %s only supports Java 8! You are currently using Java %s!", minecraft, Runtime.version().feature());
+            return false;
+        }
+
+
+        return true;
     }
 
     public void requestDownloads(FileDownloader downloader, Map<String, HashData> hashExisting) throws Exception {
@@ -258,7 +279,6 @@ public class MrPackInstaller {
 
             if (!file.env.getOrDefault("server", "required").equals("unsupported")) {
                 Files.createDirectories(path.getParent());
-                Logger.info("Requesting download for file %s", file.path);
                 downloader.request(path, file.path, file.fileSize, HashData.read(Constants.MODRINTH_HASH, file.hashes.get(Constants.MODRINTH_HASH)), file.downloads);
             }
         }

@@ -3,5 +3,11 @@
   - If url is provided, it will automatically extract modpack id and optionally the version (if not set, it will ask for it).
   - If id is provided, it will use it to lookup the pack, then require selecting version.
   - Otherwise it will search for the modpack by name, allowing you to select it. After that you need to select the version.
+- Improved file downloading. It now uses temporary files before moving them to correct location.
 - Improved handling of hashes and old file cleaning. It should now do better job and preserve modified, but not updated files.
 - Added support for non SHA-512 hashes. SHA-512 is still used for modpack file validation.
+- You can now change version list source by defining `version_list_url` in `modpack-info.json`.
+- Java version is now checked, preventing usage of versions older than one supported by Minecraft.
+- Downgraded GSON to old release to make the jar file smaller (as many new features weren't used anyway).
+- Removed some useless / duplicate logs.
+- Added support for reading modpack info from bytes prepended to the jar (for example via `cat modpack-info.json mrpack4server-X.Y.Z.jar > server.jar`) [@skyevg]

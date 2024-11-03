@@ -12,6 +12,6 @@ public class FabricInstallerVersion {
     public boolean stable = false;
 
     public static List<FabricInstallerVersion> read(String s) {
-        return Utils.GSON_MAIN.fromJson(s, TYPE);
+        return Utils.GSON_MAIN.fromJson(s, TYPE.getType());
     }
 }

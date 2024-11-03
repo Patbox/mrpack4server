@@ -21,7 +21,6 @@ public interface ForgeInstallerLookup {
             var file = path.resolve(name);
             if (!Files.exists(file)) {
                 var display = "Forge Server Installer " + mcVersion + "-" + version;
-                Logger.info("Requesting download for %s.", display);
                 Files.createDirectories(file.getParent());
                 downloader.request(file, name, display, -1, null, List.of(
                         URI.create("https://maven.minecraftforge.net/net/minecraftforge/forge/" +

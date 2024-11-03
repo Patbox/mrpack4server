@@ -13,8 +13,8 @@ import java.util.function.Predicate;
 
 public interface ModrinthModpackLookup {
     @Nullable
-    static Result findVersion(String projectId, String displayName, String displayVersion, boolean logError, Predicate<ModrinthModpackVersion> versionPredicate) {
-        var versions = getVersions(projectId, displayName);
+    static Result findVersion(String api, String projectId, String displayName, String displayVersion, boolean logError, Predicate<ModrinthModpackVersion> versionPredicate) {
+        var versions = getVersions(api, projectId, displayName);
         if (versions == null) {
             return null;
         }
@@ -38,10 +38,10 @@ public interface ModrinthModpackLookup {
     }
 
     @Nullable
-    static List<ModrinthModpackVersion> getVersions(String projectId, String displayName) {
+    static List<ModrinthModpackVersion> getVersions(String requestUrl, String projectId, String displayName) {
         try {
             var client = Utils.createHttpClient();
-            var res = client.send(Utils.createGetRequest(URI.create("https://api.modrinth.com/v2/project/" + projectId + "/version")), HttpResponse.BodyHandlers.ofString());
+            var res = client.send(Utils.createGetRequest(URI.create(requestUrl)), HttpResponse.BodyHandlers.ofString());
             if (res.statusCode() != 200) {
                 Logger.warn("Failed to lookup modpack files for %s (%s)! Got code response %s | %s", displayName, projectId, res.statusCode(), res.body());
                 return null;

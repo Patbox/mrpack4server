@@ -30,8 +30,6 @@ public interface FabricInstallerLookup {
             var file = path.resolve(name);
             if (!Files.exists(file)) {
                 var display = "Fabric Installer " + version;
-                Logger.info("Requesting download for %s.", display);
-
                 Files.createDirectories(file.getParent());
                 downloader.request(file, name, display, -1, null, List.of(
                         URI.create("https://maven.fabricmc.net/net/fabricmc/fabric-installer/" + version + "/fabric-installer-" + version + ".jar")
@@ -52,7 +50,6 @@ public interface FabricInstallerLookup {
             var file = path.resolve(name);
             if (!Files.exists(file)) {
                 var display = "Fabric Installer " + version + " for Loader " + fabricVersion + " and Minecraft " + mcVersion;
-                Logger.info("Requesting download for %s.", display);
 
                 Files.createDirectories(file.getParent());
                 downloader.request(file, name, display, -1, null, List.of(

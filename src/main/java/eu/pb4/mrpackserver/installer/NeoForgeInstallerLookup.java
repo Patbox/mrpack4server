@@ -21,7 +21,6 @@ public interface NeoForgeInstallerLookup {
             var file = path.resolve(name);
             if (!Files.exists(file)) {
                 var display = "NeoForge Server Installer " + version;
-                Logger.info("Requesting download for %s.", display);
                 Files.createDirectories(file.getParent());
                 downloader.request(file, name, display, -1, null, List.of(
                         URI.create("https://maven.neoforged.net/releases/net/neoforged/neoforge/" + version + "/neoforge-" + version + "-installer.jar")
@@ -41,7 +40,6 @@ public interface NeoForgeInstallerLookup {
             var file = path.resolve(name);
             if (!Files.exists(file)) {
                 var display = "NeoForge Server Installer " + version;
-                Logger.info("Requesting download for %s.", display);
                 Files.createDirectories(file.getParent());
                 downloader.request(file, name, display, -1, null, List.of(
                         URI.create("https://maven.neoforged.net/releases/net/neoforged/forge/" +
