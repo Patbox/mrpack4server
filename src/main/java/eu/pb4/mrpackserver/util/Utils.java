@@ -31,8 +31,38 @@ public interface Utils {
     Gson GSON_MAIN = new GsonBuilder().disableHtmlEscaping().setLenient().registerTypeHierarchyAdapter(HashData.class, new HashData.Serializer()).create();
     Gson GSON_PRETTY = new GsonBuilder().disableHtmlEscaping().setLenient().setPrettyPrinting().registerTypeHierarchyAdapter(HashData.class, new HashData.Serializer()).create();
 
+    private static int indexOf(byte[] data, byte[] pattern) {
+        int j = 0;
+
+        for (int i = 0; i < data.length; i++) {
+            if (pattern[j] != data[i]) {
+                j = 0;
+            }
+            if (pattern[j] == data[i]) { j++; }
+            if (j == pattern.length) {
+                return i - pattern.length + 1;
+            }
+        }
+        return -1;
+    }
+
     @Nullable
     static ModpackInfo resolveModpackInfo(Path currentDir) throws IOException {
+        var jarFile = Utils.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        try {
+            var bytes = Files.readAllBytes(Path.of(jarFile));
+            var jarStart = indexOf(bytes, new byte[]{0x50, 0x4b, 0x03, 0x04});
+            if (jarStart > 0) {
+                var jsonPart = Arrays.copyOf(bytes, jarStart);
+                var x = ModpackInfo.read(new String(jsonPart));
+
+                if (x.isValid()) {
+                    return x;
+                }
+            }
+        } catch (IOException e) {
+            // ignored
+        }
 
         try (var data = Utils.class.getResourceAsStream("/modpack-info.json")) {
             var x = ModpackInfo.read(new String(Objects.requireNonNull(data).readAllBytes()));
