@@ -61,9 +61,8 @@ public interface Utils {
     }
     @Nullable
     static ModpackInfo resolveModpackInfoInternal() throws IOException {
-        var jarFile = Utils.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        try {
-            var bytes = Files.readAllBytes(Path.of(jarFile));
+        try (var jarFile = Utils.class.getProtectionDomain().getCodeSource().getLocation().openStream();) {
+            var bytes = jarFile.readAllBytes();
             var jarStart = indexOf(bytes, new byte[]{0x50, 0x4b, 0x03, 0x04});
             if (jarStart > 0) {
                 var jsonPart = Arrays.copyOf(bytes, jarStart);
