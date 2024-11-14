@@ -13,12 +13,11 @@ If used with modpack for other unsupported platforms, it will still install ever
 
 ## Usage:
 The file is run just like any other Minecraft server (`java -jar mrpack4server.jar`) and will use / pass
-through any arguments given to it. When used on its own, it looks in 3 places for modpack definition
-with provided order:
-- `modpack-info.json` within jar itself, useful for modpack makers. See below for definition,
-- `modpack-info.json` within server's root directory, for users to simple setup,
-- `local.mrpack` within server's root directory, making it directly use provided mrpack file instead of 
-pulling it from Modrinth.
+through any arguments given to it. When used on its own, it first looks in 3 places for modpack definition:
+- `modpack-info.json` included within jar itself, useful for modpack makers. See below for definition,
+- `modpack-info.json` in server's root directory (alongside jar), defined for general user setups,
+- `local.mrpack` in server's root directory (alongside jar), making it directly use provided mrpack file instead of 
+pulling one from Modrinth.
 
 If neither of these is found, it will ask you to either provide link, project id or name of the modpack you want to install
 and then the version of it (suggesting latest one), which will be used to create local `modpack-info.json` file. 
@@ -32,7 +31,12 @@ Default/main jar only supports Java 21 (`mrpack4server-X.Y.Z.jar`). If you want 
 These versions however don't override requirements of Minecraft/Loader itself. 
 For example, you still need Java to use Java 17 or above to run Minecraft 1.20.1 and Java 8 (but not newer!) to run Forge 1.16.5.
 
-You can create bundled variant by hand or by running `java -cp mrpack4server.jar eu.pb4.mrpackserver.Create`.
+You can get download preconfigured jar by downloading it from `https://mrpack4server.pb4.eu/download/<MODPACK>/<VERSION>/<JAVA>/server.jar` url,
+where you replace `<MODPACK>` with project id or slug, `<VERSION>` for modpack version, `<JAVA>` for java base used.
+For example `https://mrpack4server.pb4.eu/download/polymania/0.2.1/jvm21/server.jar` will download launcher for Polymania 0.2.1, using Java 21 variant
+of the mrpack4server. Currently supported variants are `jvm21`, `jvm17`, `jvm16` and `jvm8`.
+
+You can also create bundled variant by hand with some zip software or by running `java -cp mrpack4server.jar eu.pb4.mrpackserver.Create`.
 By default, without any arguments, it will copy currently provided `modpack-info.json` file, but you can also set it with arguments (`--arg value`),
 where it mirrors all arguments from `modpack-info.json` (aka `--project_id my_modpack --version_id 1.2.3` will create jar with these defined).
 Additionally, you can use the `--out` argument to set output file path, by default being set to `--out server.jar`.
