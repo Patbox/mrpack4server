@@ -73,11 +73,11 @@ to make easier to describe things.
 ```
 
 Examples:
-- Installing Adrenaserver version 1.7.0+1.21.1.fabric.
+- Installing Adrenaline version 1.25.0+1.21.1.fabric.
 ```json
 {
-  "project_id": "adrenaserver",
-  "version_id": "1.7.0+1.21.1.fabric"
+  "project_id": "adrenaline",
+  "version_id": "1.25.0+1.21.1.fabric"
 }
 ```
 - Installing Cobblemon Official Modpack v1.5.2 (using id's copied from website).
