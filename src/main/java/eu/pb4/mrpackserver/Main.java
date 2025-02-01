@@ -6,15 +6,34 @@ import eu.pb4.mrpackserver.launch.Launcher;
 import eu.pb4.mrpackserver.launch.LegacyExitBlocker;
 import eu.pb4.mrpackserver.util.*;
 
+import java.awt.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Objects;
 
 public class Main {
+    public static boolean isLaunched = false;
     public static void main(String[] args) throws Throwable {
-        var runPath = Paths.get("");
+        System.setProperty("log4j2.formatMsgNoLookups", "true");
 
+        boolean noGui = false;
+        for (var arg : args) {
+            if (arg.equals("nogui") || arg.equals("--nogui")) {
+                noGui = true;
+                break;
+            }
+        }
+
+        if (!noGui) {
+            noGui = GraphicsEnvironment.isHeadless();
+        }
+
+        var runPath = Paths.get("");
         var modpackInfo = Utils.resolveModpackInfo(runPath);
+
+        if (!noGui) {
+            InstallerGui.setup(modpackInfo);
+        }
 
         if (modpackInfo == null) {
             Logger.info("Couldn't find modpack definition! Creating a new one...");
@@ -87,6 +106,14 @@ public class Main {
             Logger.warn("This means the platform used by this modpack isn't supported!");
             Logger.warn("Refer to platforms installation guide for more information!");
             return;
+        }
+
+        isLaunched = true;
+
+        if (!noGui && instanceInfo.dependencies.get(Constants.FORGE) != null && FlexVerComparator.compare(instanceInfo.dependencies.get(Constants.MINECRAFT), "1.17") < 0) {
+            if (InstallerGui.instance != null) {
+                InstallerGui.instance.handleForgeFix();
+            }
         }
 
         if (instanceInfo.forceSystemClasspath) {
