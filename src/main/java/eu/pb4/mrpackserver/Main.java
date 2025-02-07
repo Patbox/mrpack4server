@@ -86,8 +86,9 @@ public class Main {
                     Files.writeString(instanceDataPath, Utils.GSON_MAIN.toJson(newInstance.info()));
                     instanceInfo = newInstance.info();
 
+                    Logger.useFullName();
                     LegacyExitBlocker.run(newInstance.installer());
-
+                    Logger.useShortName();
                     Logger.info("Installation of %s (%s) finished!", modpackInfo.getDisplayName(), modpackInfo.getDisplayVersion());
                 } else if (!instanceInfo.runnablePath.isEmpty()) {
                     Logger.error("Failed to install modpack! Quitting...");
@@ -112,7 +113,8 @@ public class Main {
 
         if (!noGui && instanceInfo.dependencies.get(Constants.FORGE) != null && FlexVerComparator.compare(instanceInfo.dependencies.get(Constants.MINECRAFT), "1.17") < 0) {
             if (InstallerGui.instance != null) {
-                InstallerGui.instance.handleForgeFix();
+                InstallerGui.instance.close();
+                //InstallerGui.instance.handleForgeFix();
             }
         }
 

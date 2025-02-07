@@ -163,7 +163,7 @@ public class MrPackInstaller {
                     this.forceSystemClasspath = true;
                     var installer = FabricInstallerLookup.downloadGeneric(downloader, this.destination);
                     if (installer != null) {
-                        this.installer = new Installer(installer.name(), "server", "-mcversion", mcVersion, "-loader", version);
+                        this.installer = new Installer("Fabric Installer", installer.name(), "server", "-mcversion", mcVersion, "-loader", version);
                     }
 
                     this.newLauncher = "fabric-server-launch.jar";
@@ -181,7 +181,7 @@ public class MrPackInstaller {
                         ? NeoForgeInstallerLookup.downloadLegacy(downloader, this.destination, mcVersion, version)
                         : NeoForgeInstallerLookup.download(downloader, this.destination, version);
                 if (installer != null) {
-                    this.installer = new Installer(installer.name(), "--installServer");
+                    this.installer = new Installer("NeoForge Server Installer", installer.name(), "--installServer");
                 }
                 var starter = ForgeStarterLookup.download(downloader, this.destination);
                 if (starter != null) {
@@ -190,21 +190,17 @@ public class MrPackInstaller {
             } else if (this.index.dependencies.containsKey(Constants.FORGE)) {
                 this.forceSystemClasspath = true;
                 var version = this.index.dependencies.get(Constants.FORGE);
+
+                var installer = ForgeInstallerLookup.download(downloader, this.destination, mcVersion, version);
+                if (installer != null) {
+                    this.installer = new Installer("Forge Server Installer", installer.name(), "--installServer");
+                }
                 if (FlexVerComparator.compare(mcVersion, "1.17.0") >= 0) {
-                    var installer = ForgeInstallerLookup.download(downloader, this.destination, mcVersion, version);
-                    if (installer != null) {
-                        this.installer = new Installer(installer.name(), "--installServer");
-                    }
                     var starter = ForgeStarterLookup.download(downloader, this.destination);
                     if (starter != null) {
                         this.newLauncher = starter.name();
                     }
                 } else {
-                    var installer = ForgeInstallerLookup.download(downloader, this.destination, mcVersion, version);
-                    if (installer != null) {
-                        this.installer = new Installer(installer.name(), "--installServer");
-                    }
-
                     this.newLauncher = "forge-" + mcVersion + "-" + version + ".jar";
                 }
             } else if (this.index.dependencies.containsKey(Constants.QUILT)) {
@@ -212,7 +208,7 @@ public class MrPackInstaller {
                 var version = this.index.dependencies.get(Constants.QUILT);
                 var installer = QuiltInstallerLookup.download(downloader, this.destination);
                 if (installer != null) {
-                    this.installer = new Installer(installer.name(), "install", "server", mcVersion, version, "--install-dir=./");
+                    this.installer = new Installer("Quilt Installer", installer.name(), "install", "server", mcVersion, version, "--install-dir=./");
                 }
 
                 this.newLauncher = "quilt-server-launch.jar";
@@ -360,5 +356,5 @@ public class MrPackInstaller {
         return this.forceSystemClasspath;
     }
 
-    public record Installer(String path, String... args) {}
+    public record Installer(String name, String path, String... args) {}
 }

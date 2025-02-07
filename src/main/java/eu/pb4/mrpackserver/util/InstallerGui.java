@@ -20,6 +20,7 @@ import java.util.ArrayList;
 public class InstallerGui extends JComponent {
     private static final Font FONT_MONOSPACE = new Font("Monospaced", Font.PLAIN, 12);
     private final OutputStream logger;
+    private final Charset charset;
     private PrintStream oldOut;
     private PrintStream oldErr;
     private InputStream oldIn;
@@ -36,13 +37,14 @@ public class InstallerGui extends JComponent {
         //this.setPreferredSize(new Dimension(954, 480));
         this.setLayout(new BorderLayout());
         this.add(this.createConsole());
+        this.charset =  getCharset(System.out);
         this.oldIn = System.in;
         this.oldOut = System.out;
         this.oldErr = System.err;
         this.logger = new OutputStream() {
             @Override
             public void write(byte @NotNull [] bytes, int offset, int length) {
-                var text = new String(bytes, offset, length);
+                var text = new String(bytes, offset, length, charset);
                 writeToConsole(text);
             }
 
@@ -53,9 +55,10 @@ public class InstallerGui extends JComponent {
 
         };
 
-        System.setOut(new PrintStream(new DoubleOutputStream(System.out, logger), false, getCharset(System.out)));
-        System.setErr(new PrintStream(new DoubleOutputStream(System.err, logger), false, getCharset(System.err)));
-        System.setIn(new DoubleInputStream(System.in, this.in));
+
+        System.setOut(new PrintStream(new DoubleOutputStream(System.out, logger), false, this.charset));
+        System.setErr(new PrintStream(new DoubleOutputStream(System.err, logger), false, this.charset));
+        System.setIn(System.console() != null ? new DoubleInputStream(System.in, this.in) : this.in);
 
         instance = this;
     }
@@ -70,17 +73,7 @@ public class InstallerGui extends JComponent {
                 return;
             }
 
-            var bar = scrollPane.getVerticalScrollBar();
-            var scrollLock = false;
-
-            if (scrollPane.getViewport().getView() == logBox) {
-                scrollLock = bar.getValue() + bar.getSize().getHeight() + FONT_MONOSPACE.getSize() * text.split("\n").length > bar.getMaximum();
-            }
             logBox.append(text);
-
-            if (scrollLock) {
-                bar.setValue(Integer.MAX_VALUE);
-            }
         });
     }
 
@@ -88,7 +81,15 @@ public class InstallerGui extends JComponent {
         try {
             return err.charset();
         } catch (Throwable e) {
-            return Charset.defaultCharset();
+            try {
+                return System.console().charset();
+            } catch (Throwable e2) {
+                try {
+                    return Charset.forName(System.getProperty("stdout.encoding"));
+                } catch (Throwable e3) {
+                    return Charset.defaultCharset();
+                }
+            }
         }
     }
 
@@ -106,7 +107,7 @@ public class InstallerGui extends JComponent {
         }
 
         var jFrame = new JFrame(name);
-        jFrame.setPreferredSize(new Dimension(954, 480));
+        jFrame.setPreferredSize(new Dimension(800, 480));
         var gui = new InstallerGui(jFrame);
         jFrame.add(gui);
         jFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -126,8 +127,10 @@ public class InstallerGui extends JComponent {
     private Component createConsole() {
         var panel = new JPanel(new BorderLayout());
         this.logBox = new JTextArea();
+        this.logBox.setFocusable(false);
         var caret = new DefaultCaret();
         caret.setVisible(false);
+        //caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
         this.logBox.setCaret(caret);
 
         var scroll = new JScrollPane(logBox, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -138,8 +141,8 @@ public class InstallerGui extends JComponent {
         var input = new JTextField();
         input.addActionListener((event) -> {
             String string = input.getText();
-            this.in.append((string + "\n").getBytes(StandardCharsets.UTF_8));
-            System.out.println(string);
+            this.in.append((string + "\n").getBytes(this.charset));
+            writeToConsole(string + "\n");
             input.setText("");
         });
         panel.add(scroll, "Center");
@@ -149,7 +152,7 @@ public class InstallerGui extends JComponent {
         return panel;
     }
 
-    private void close() {
+    public void close() {
         if (this.closed) {
             return;
         }

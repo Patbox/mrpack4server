@@ -19,8 +19,11 @@ public class ModrinthSearchData {
         public String slug = "";
         @SerializedName("title")
         public String title = "";
-
         @SerializedName("author")
         public String author = "";
+        @SerializedName("description")
+        public String description = "";
+        @SerializedName("project_type")
+        public String projectType = "";
     }
 }

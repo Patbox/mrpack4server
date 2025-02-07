@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import eu.pb4.forgefx.ForgeInstallerFix;
-import eu.pb4.forgefx.S;
 import eu.pb4.mrpackserver.format.*;
 import eu.pb4.mrpackserver.installer.FileDownloader;
 import eu.pb4.mrpackserver.installer.ModrinthModpackLookup;
@@ -20,7 +19,6 @@ import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -28,9 +26,6 @@ import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
 
 public interface Utils {
     Gson GSON_MAIN = new GsonBuilder().disableHtmlEscaping().registerTypeHierarchyAdapter(HashData.class, new HashData.Serializer()).create();
@@ -184,14 +179,14 @@ public interface Utils {
 
             if (handler.getInstaller() != null) {
                 var installer = handler.getInstaller();
-                return new InstallResult(newInstance, createInstallerRunner(currentDir.resolve(installer.path()), installer.args()));
+                return new InstallResult(newInstance, createInstallerRunner(installer.name(), currentDir.resolve(installer.path()), installer.args()));
             }
 
             return new InstallResult(newInstance, () -> {});
         }
     }
 
-    static Runnable createInstallerRunner(Path path, String[] args) {
+    static Runnable createInstallerRunner(String name, Path path, String[] args) {
         return () -> {
             var t = new Thread(() -> {
                 for (var i = 0; i < 10; i ++) {
@@ -215,6 +210,8 @@ public interface Utils {
                     }
                 }
             });
+
+            Logger.info("Starting %s!", name);
             if (!Launcher.launchExec(path, ForgeInstallerFix::new, args)) {
                 Logger.warn("Failed to execute the installer! See errors above.");
             }
@@ -344,10 +341,16 @@ public interface Utils {
         var scanner = new Scanner(System.in);
         while (true) {
             var newInfo = new ModpackInfo();
-            Logger.info("Provide modpack name, it's id or url linking to it");
+            String description = "";
+            Logger.info("Provide modpack name, it's id or url linking to it.");
+            Logger.info("Prefix with ? to search.");
             Logger.label(">");
             var data = scanner.nextLine();
             boolean requestVersion = false;
+
+            if (data.isBlank()) {
+                continue;
+            }
 
             if (data.startsWith("http://") || data.startsWith("https://")) {
                 try {
@@ -377,7 +380,12 @@ public interface Utils {
                         var res = client.send(Utils.createGetRequest(URI.create(Constants.MODRINTH_API + "/project/" + newInfo.projectId)), HttpResponse.BodyHandlers.ofString());
                         if (res.statusCode() == 200) {
                             var project = ModrinthProjectData.read(res.body());
+                            if (!project.projectType.equals("modpack")) {
+                                Logger.error("Project %s (%s) is not a modpack!", project.title, project.slug);
+                                continue;
+                            }
                             newInfo.displayName = project.title;
+                            description = project.description;
                         }
                     }
                 } catch (Throwable e) {
@@ -386,15 +394,23 @@ public interface Utils {
                 }
             } else {
                 var client = Utils.createHttpClient();
-                var res = client.send(Utils.createGetRequest(URI.create(Constants.MODRINTH_API + "/project/" + URLEncoder.encode(data, StandardCharsets.UTF_8))), HttpResponse.BodyHandlers.ofString());
-                if (res.statusCode() == 200) {
+                var res = data.charAt(0) == '?' ? null : client.send(Utils.createGetRequest(URI.create(Constants.MODRINTH_API + "/project/" + URLEncoder.encode(data, StandardCharsets.UTF_8))), HttpResponse.BodyHandlers.ofString());
+
+                boolean foundProject = false;
+                if (res != null && res.statusCode() == 200) {
                     var project = ModrinthProjectData.read(res.body());
-                    newInfo.projectId = project.slug;
-                    newInfo.displayName = project.title;
-                    requestVersion = true;
-                } else {
+                    if (project.projectType.equals("modpack")) {
+                        newInfo.projectId = project.slug;
+                        newInfo.displayName = project.title;
+                        description = project.description;
+                        requestVersion = true;
+                        foundProject = true;
+                    }
+                }
+
+                if (!foundProject) {
                     res = client.send(Utils.createGetRequest(URI.create(Constants.MODRINTH_API + "/search?query="
-                            + URLEncoder.encode(data, StandardCharsets.UTF_8) + "&facets=[[%22project_type:modpack%22]]")), HttpResponse.BodyHandlers.ofString());
+                            + URLEncoder.encode(data, StandardCharsets.UTF_8) + "&facets=[[%22project_type:modpack%22]]&limit=" + Constants.SEARCH_QUERY_MAX_SIZE)), HttpResponse.BodyHandlers.ofString());
                     if (res.statusCode() != 200) {
                         Logger.error("Failed to request Modrinth search!");
                         return;
@@ -407,12 +423,13 @@ public interface Utils {
                     }
                     Logger.info("Found Modpacks:");
 
-                    for (int i = 0; i < Math.min(search.hits.size(), 9); i++) {
+                    for (int i = 0; i < Math.min(search.hits.size(), Constants.SEARCH_QUERY_MAX_SIZE); i++) {
                         var modpack = search.hits.get(i);
                         Logger.info("%s > %s (%s) by %s", i + 1, modpack.title, modpack.slug, modpack.author);
                     }
+                    boolean selected = false;
                     while (true) {
-                        Logger.info("Select Modpack by number [1]:");
+                        Logger.info("Select Modpack by number [1] or 0 to go back:");
                         Logger.label(">");
                         data = scanner.nextLine();
                         int id;
@@ -428,17 +445,28 @@ public interface Utils {
                             if (id > search.hits.size()) {
                                 Logger.error("Invalid id, try again!");
                                 continue;
+                            } else if (id == 0) {
+                                break;
                             }
                         }
+                        selected = true;
                         var pack = search.hits.get(id - 1);
                         newInfo.projectId = pack.slug;
                         newInfo.displayName = pack.title;
+                        description = pack.description;
                         requestVersion = true;
                         break;
+                    }
+                    if (!selected) {
+                        continue;
                     }
                 }
             }
             Logger.info("Selected Modpack: %s (%s)", newInfo.getDisplayName(), newInfo.projectId);
+
+            if (description != null && !description.isEmpty()) {
+                Logger.info("Description: %s", description);
+            }
 
             if (requestVersion) {
                 var versions = ModrinthModpackLookup.getVersions(newInfo.getVersionListUrl(), newInfo.projectId, newInfo.getDisplayName());

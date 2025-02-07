@@ -32,8 +32,12 @@ public class Constants {
             "gitlab.com"
     );
     public static final String LOG_PREFIX = "[mrpack4server] ";
+    public static final String LOG_PREFIX_SMALL = "";
     public static final String LOG_WARN_PREFIX = "[mrpack4server | WARN] ";
+    public static final String LOG_WARN_PREFIX_SMALL = "[WARN] ";
     public static final String LOG_ERROR_PREFIX = "[mrpack4server | ERROR] ";
+    public static final String LOG_ERROR_PREFIX_SMALL = "[ERROR] ";
+    public static final int SEARCH_QUERY_MAX_SIZE = 20;
 
     static {
         String extraFlavor = "";
