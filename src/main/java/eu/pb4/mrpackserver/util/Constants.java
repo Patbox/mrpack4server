@@ -24,7 +24,16 @@ public class Constants {
     public static final String MODRINTH_API = "https://api.modrinth.com/v2";
     public static final String MODRINTH_API_VERSIONS = MODRINTH_API + "/project/{PROJECT_ID}/version";
     public static final List<String> OVERWRITES = List.of("/overrides", "/server_overrides");
-    public static final List<String> DEFAULT_NON_OVERWRITABLE = List.of("server.properties", "world", DATA_FOLDER, CUSTOM_NON_OVERWRITABLE_LIST);
+    public static final List<String> DEFAULT_NON_OVERWRITABLE = List.of(
+            "server.properties",
+            "world",
+            "whitelist.json",
+            "banned-ips.json",
+            "banned-players.json",
+            "ops.json",
+            DATA_FOLDER,
+            CUSTOM_NON_OVERWRITABLE_LIST
+    );
 
     public static final Set<String> DEFAULT_WHITELISTED_URLS = Set.of(
             "cdn.modrinth.com",

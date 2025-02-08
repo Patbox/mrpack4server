@@ -67,8 +67,14 @@ to make easier to describe things.
   "whitelisted_domains": [
     "files.pb4.eu" // Note it's just a domain, no protocol/ports/paths.
   ],
+  // (Optional) Additional list of paths that can't be overwritten if they already exist.
+  "non_overwritable_paths": [
+    "global-player-data" // Note it's just path, always relative to server root.
+  ],
   // (Optional) Allows to url used for requesting list of available versions, used by auto-updating feature (the ;; versions).
-  "version_list_url": "https://api.modrinth.com/v2/project/{PROJECT_ID}/versions"
+  "version_list_url": "https://api.modrinth.com/v2/project/{PROJECT_ID}/versions",
+  // (Optional) Allows to skip java version check. By default is set to false
+  "skip_java_version_check": false
 }
 ```
 
@@ -87,3 +93,20 @@ Examples:
   "version_id": "bpaivauC"
 }
 ```
+
+## Securing folders/files from overriding.
+If you use mrpack4server 0.5.0 or newer, you can now create a `lockedpaths.txt` file in your main server directory.
+It will then be used to select which paths are blocked from getting updates/being overwritten.
+
+You can either provide a folder (for example `mods/luckperms`) or direct file (for example `config/styledchat.json`).
+Every new entry should be provided on a new line.
+
+By default, these paths are secured:
+- `world` folder
+- `server.properties`
+- `whitelist.json`
+- `banned-ips.json`
+- `banned-players.json`
+- `ops.json`
+- `.mrpack4server` folder
+- `lockedpaths.txt`

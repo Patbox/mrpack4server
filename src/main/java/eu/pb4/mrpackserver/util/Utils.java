@@ -148,7 +148,20 @@ public interface Utils {
             var customNonOverwritable = currentDir.resolve(Constants.CUSTOM_NON_OVERWRITABLE_LIST);
             try {
                 if (Files.exists(customNonOverwritable)) {
-                    nonOverwritablePaths.addAll(Files.readAllLines(customNonOverwritable));
+                    for (var x : Files.readAllLines(customNonOverwritable)) {
+                        if (x.startsWith("/")) {
+                            x = x.substring(1);
+                        }
+                        if (x.endsWith("/")) {
+                            x = x.substring(0, x.length() - 1);
+                        }
+
+                        if (x.isBlank()) {
+                            continue;
+                        }
+
+                        nonOverwritablePaths.add(x);
+                    }
                 }
             } catch (Throwable ignored) {
 
