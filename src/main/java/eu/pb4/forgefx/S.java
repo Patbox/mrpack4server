@@ -120,7 +120,8 @@ public class S {
     }
 
     public static void runFinalization() {
-       System.runFinalization();
+        //noinspection removal
+        System.runFinalization();
     }
 
     public static void load(String filename) {

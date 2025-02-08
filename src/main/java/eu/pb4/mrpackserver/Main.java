@@ -32,7 +32,11 @@ public class Main {
         var modpackInfo = Utils.resolveModpackInfo(runPath);
 
         if (!noGui) {
-            InstallerGui.setup(modpackInfo);
+            try {
+                InstallerGui.setup(modpackInfo);
+            } catch (Throwable e) {
+                Logger.error("Tried to open terminal ui, but it failed!", e);
+            }
         }
 
         if (modpackInfo == null) {

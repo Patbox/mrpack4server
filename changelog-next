@@ -1,6 +1,8 @@
 - Added simple UI visible when running the jar directly on systems with graphics.
   - It will be closed once Minecraft opens it's own server window.
   - Can be disabled by providing `--noGui` or `noGui` option, just like vanilla game.
+- Modpack info files can now define non-overwritable files (prevents' modification if they already exist).
+- You can now add custom non-overwritable files/folders as a new-line separated list in `lockedpaths.txt` file in main server directory.
 - When running standalone and selecting a project, it now validates if it's actually a modpack.
 - When providing modpack slug/link, you can force it to always search by prefixing the input with question mark.
 - Removed `mrpack4server` text from log prefix.

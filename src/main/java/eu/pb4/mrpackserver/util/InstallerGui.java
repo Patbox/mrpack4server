@@ -14,20 +14,18 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.*;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 public class InstallerGui extends JComponent {
     private static final Font FONT_MONOSPACE = new Font("Monospaced", Font.PLAIN, 12);
     private final OutputStream logger;
     private final Charset charset;
-    private PrintStream oldOut;
-    private PrintStream oldErr;
-    private InputStream oldIn;
+    private final PrintStream oldOut;
+    private final PrintStream oldErr;
+    private final InputStream oldIn;
     private final AppendableInputStream in = new AppendableInputStream();
     private final JFrame frame;
     private JTextArea logBox;
-    private JScrollPane scrollPane;
     private boolean closed;
 
     public static InstallerGui instance = null;
@@ -58,7 +56,7 @@ public class InstallerGui extends JComponent {
 
         System.setOut(new PrintStream(new DoubleOutputStream(System.out, logger), false, this.charset));
         System.setErr(new PrintStream(new DoubleOutputStream(System.err, logger), false, this.charset));
-        System.setIn(System.console() != null ? new DoubleInputStream(System.in, this.in) : this.in);
+        System.setIn(System.console() != null ? new DoubleWaitingInputStream(System.in, this.in) : this.in);
 
         instance = this;
     }
@@ -128,13 +126,13 @@ public class InstallerGui extends JComponent {
         var panel = new JPanel(new BorderLayout());
         this.logBox = new JTextArea();
         this.logBox.setFocusable(false);
+        this.logBox.setLineWrap(true);
         var caret = new DefaultCaret();
         caret.setVisible(false);
         //caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
         this.logBox.setCaret(caret);
 
         var scroll = new JScrollPane(logBox, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        this.scrollPane = scroll;
 
         logBox.setEditable(false);
         logBox.setFont(FONT_MONOSPACE);
@@ -217,18 +215,56 @@ public class InstallerGui extends JComponent {
         }
     }
 
-    private static class DoubleInputStream extends InputStream {
+    private static class DoubleWaitingInputStream extends InputStream {
         private final InputStream out;
         private final InputStream out2;
 
-        public DoubleInputStream(InputStream out, InputStream out2) {
+        public DoubleWaitingInputStream(InputStream out, InputStream out2) {
             this.out = out;
             this.out2 = out2;
         }
 
         @Override
         public int read() throws IOException {
-            return this.out.available() > this.out2.available() ? this.out.read() : this.out2.read();
+            var stream = getStream();
+            if (stream != null) {
+                return stream.read();
+            }
+            return -1;
+        }
+
+        @Override
+        public int read(@NotNull byte[] b) throws IOException {
+            var stream = getStream();
+            if (stream != null) {
+                return stream.read(b);
+            }
+            return 0;
+        }
+
+        @Override
+        public int read(@NotNull byte[] b, int off, int len) throws IOException {
+            var stream = getStream();
+            if (stream != null) {
+                return stream.read(b, off, len);
+            }
+            return 0;
+        }
+
+        private InputStream getStream() throws IOException {
+            while (true) {
+                if (this.out.available() > 0) {
+                    return this.out;
+                }
+                if (this.out2.available() > 0) {
+                    return this.out2;
+                }
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    return null;
+                }
+            }
         }
 
         @Override
@@ -277,7 +313,7 @@ public class InstallerGui extends JComponent {
         }
     }
 
-    public void handleForgeFix() {
+    /*public void handleForgeFix() {
         Logger.warn("Forge on 1.16.5 and older breaks mrpack4server's initial log screen.");
         Logger.warn("You can safely close it without stopping the server.");
         var currOut = System.out;
@@ -313,5 +349,5 @@ public class InstallerGui extends JComponent {
         } catch (Throwable e) {
             Logger.error("Failed to apply forge logging fix!", e);
         }
-    }
+    }*/
 }

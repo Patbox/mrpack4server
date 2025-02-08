@@ -20,13 +20,14 @@ public class MrPackInstaller {
     private final Path destinationOldModified;
     private final InstanceInfo currentInstanceData;
     private final Set<String> whitelistedDomains;
+    private final HashSet<String> nonOverwritablePaths;
     @Nullable
     private String newLauncher;
     @Nullable
     private Installer installer;
     private boolean forceSystemClasspath = false;
 
-    public MrPackInstaller(Path source, ModpackIndex index, Path destination, InstanceInfo data, HashMap<String, HashData> hashes, Set<String> whitelistedDomains) throws IOException {
+    public MrPackInstaller(Path source, ModpackIndex index, Path destination, InstanceInfo data, HashMap<String, HashData> hashes, Set<String> whitelistedDomains, HashSet<String> nonOverwritablePaths) throws IOException {
         this.source = source;
         this.index = index;
         this.currentInstanceData = data;
@@ -38,6 +39,7 @@ public class MrPackInstaller {
         this.newHashes = new HashMap<>();
 
         this.whitelistedDomains = whitelistedDomains;
+        this.nonOverwritablePaths = nonOverwritablePaths;
     }
 
     public void prepareFolders() throws IOException {
@@ -52,13 +54,14 @@ public class MrPackInstaller {
                 Files.walkFileTree(path, new FileVisitor<Path>() {
                     @Override
                     public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                        var p = destination.resolve(path.relativize(dir).toString()).normalize();
+                        var local = path.relativize(dir).toString();
+                        var p = destination.resolve(local).normalize();
                         if (!p.startsWith(destination.toAbsolutePath())) {
-                            Logger.error("Modpack contains files, that are placed outside of server's root! Found '%s'", path.relativize(dir).toString());
+                            Logger.error("Modpack contains files, that are placed outside of server's root! Found '%s'", local);
                             return FileVisitResult.TERMINATE;
                         }
 
-                        if (Constants.NON_OVERWRITABLE.contains(p.toString()) && Files.exists(p)) {
+                        if (nonOverwritablePaths.contains(local) && Files.exists(p)) {
                             Logger.warn("Skipping non-overwritable path: %s", path);
                             return FileVisitResult.SKIP_SUBTREE;
                         }
@@ -75,7 +78,7 @@ public class MrPackInstaller {
                             return FileVisitResult.TERMINATE;
                         }
 
-                        if (Constants.NON_OVERWRITABLE.contains(outPath.toString()) && Files.exists(file)) {
+                        if (nonOverwritablePaths.contains(local) && Files.exists(file)) {
                             Logger.warn("Skipping non-overwritable file: %s", path);
                             return FileVisitResult.CONTINUE;
                         }
@@ -241,6 +244,8 @@ public class MrPackInstaller {
 
         for (var file : this.index.files) {
             var currentHash = hashExisting.remove(file.path);
+            var path = this.destination.resolve(file.path);
+
             if (currentHash != null) {
                 var newHash = HashData.read(Constants.MODRINTH_HASH, file.hashes);
 
@@ -250,6 +255,10 @@ public class MrPackInstaller {
                 } else if (currentHash.equals(newHash)) {
                     this.newHashes.put(file.path, newHash);
                     continue;
+                } else if (nonOverwritablePaths.contains(file.path) && Files.exists(path)) {
+                    Logger.warn("Skipping non-overwritable file: %s", file.path);
+                    this.newHashes.put(file.path, this.oldHashes.get(file.path));
+                    continue;
                 } else if (currentHash.equals(this.oldHashes.get(file.path))) {
                     Files.deleteIfExists(this.destination.resolve(file.path));
                 } else {
@@ -258,6 +267,9 @@ public class MrPackInstaller {
                     Logger.info("File '%s' was modified, but modpack required it to be updated! Moving it to '%s'", file.path, "old_modified_files/" + file.path);
                     Files.deleteIfExists(this.destination.resolve(file.path));
                 }
+            } else if (nonOverwritablePaths.contains(file.path) && Files.exists(path)) {
+                Logger.warn("Skipping non-overwritable file: %s", file.path);
+                continue;
             }
 
             for (var url : file.downloads) {
@@ -266,7 +278,6 @@ public class MrPackInstaller {
                 }
             }
 
-            var path = this.destination.resolve(file.path);
             if (Files.exists(path)) {
                 Files.createDirectories(this.destinationOldModified.resolve(file.path).getParent());
                 Files.deleteIfExists(this.destinationOldModified.resolve(file.path));

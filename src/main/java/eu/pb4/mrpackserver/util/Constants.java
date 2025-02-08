@@ -18,14 +18,15 @@ public class Constants {
     public static final int DOWNLOAD_UPDATE_TIME = 1500;
     public static final int DOWNLOAD_CHUNK_SIZE = 512;
     public static final String DATA_FOLDER = ".mrpack4server";
+    public static final String CUSTOM_NON_OVERWRITABLE_LIST = "lockedpaths.txt";
 
     public static final String FABRIC_INSTALLER_VERSIONS = "https://meta.fabricmc.net/v2/versions/installer";
     public static final String MODRINTH_API = "https://api.modrinth.com/v2";
     public static final String MODRINTH_API_VERSIONS = MODRINTH_API + "/project/{PROJECT_ID}/version";
     public static final List<String> OVERWRITES = List.of("/overrides", "/server_overrides");
-    public static final List<String> NON_OVERWRITABLE = List.of("server.properties", "world", DATA_FOLDER);
+    public static final List<String> DEFAULT_NON_OVERWRITABLE = List.of("server.properties", "world", DATA_FOLDER, CUSTOM_NON_OVERWRITABLE_LIST);
 
-    public static final Set<String> WHITELISTED_URLS = Set.of(
+    public static final Set<String> DEFAULT_WHITELISTED_URLS = Set.of(
             "cdn.modrinth.com",
             "github.com",
             "raw.githubusercontent.com",

@@ -22,6 +22,8 @@ public class ModpackInfo {
     public String versionId = "";
     @SerializedName("whitelisted_domains")
     public List<String> whitelistedDomains = new ArrayList<>();
+    @SerializedName("non_overwritable_paths")
+    public List<String> nonOverwritablePaths = new ArrayList<>();
     @Nullable
     public String sha512 = null;
     @Nullable
@@ -36,6 +38,9 @@ public class ModpackInfo {
     @SerializedName("internal_flavor")
     @Nullable
     public String internalFlavor = null;
+
+    @SerializedName("skip_java_version_check")
+    public Boolean skipJavaVersionCheck = null;
 
     public boolean isValid() {
         return !this.projectId.isBlank() && !this.versionId.isBlank();

@@ -139,14 +139,26 @@ public interface Utils {
                 hashes = Utils.GSON_MAIN.fromJson(Files.readString(hashPath), new TypeToken<HashMap<String, HashData>>() {}.getType());
             }
             var whitelistedDomains = new HashSet<String>();
-            whitelistedDomains.addAll(Constants.WHITELISTED_URLS);
+            whitelistedDomains.addAll(Constants.DEFAULT_WHITELISTED_URLS);
             whitelistedDomains.addAll(modpackInfo.whitelistedDomains);
+            var nonOverwritablePaths = new HashSet<String>();
+            nonOverwritablePaths.addAll(Constants.DEFAULT_NON_OVERWRITABLE);
+            nonOverwritablePaths.addAll(modpackInfo.nonOverwritablePaths);
+
+            var customNonOverwritable = currentDir.resolve(Constants.CUSTOM_NON_OVERWRITABLE_LIST);
+            try {
+                if (Files.exists(customNonOverwritable)) {
+                    nonOverwritablePaths.addAll(Files.readAllLines(customNonOverwritable));
+                }
+            } catch (Throwable ignored) {
+
+            }
 
             Logger.info("Starting %s of %s (%s)", hashes.isEmpty() ? "installation" : "update", modpackInfo.getDisplayName(), modpackInfo.getDisplayVersion());
 
-            var handler = new MrPackInstaller(zip.getPath(""), index, currentDir, instance, hashes, whitelistedDomains);
+            var handler = new MrPackInstaller(zip.getPath(""), index, currentDir, instance, hashes, whitelistedDomains, nonOverwritablePaths);
 
-            if (!handler.checkJavaVersion()) {
+            if (modpackInfo.skipJavaVersionCheck != Boolean.TRUE && !handler.checkJavaVersion()) {
                 return null;
             }
 
@@ -394,8 +406,13 @@ public interface Utils {
                 }
             } else {
                 var client = Utils.createHttpClient();
-                var res = data.charAt(0) == '?' ? null : client.send(Utils.createGetRequest(URI.create(Constants.MODRINTH_API + "/project/" + URLEncoder.encode(data, StandardCharsets.UTF_8))), HttpResponse.BodyHandlers.ofString());
-
+                HttpResponse<String> res;
+                if (data.charAt(0) == '?') {
+                    data = data.substring(1);
+                    res = null;
+                } else {
+                    res = client.send(Utils.createGetRequest(URI.create(Constants.MODRINTH_API + "/project/" + URLEncoder.encode(data, StandardCharsets.UTF_8))), HttpResponse.BodyHandlers.ofString());
+                }
                 boolean foundProject = false;
                 if (res != null && res.statusCode() == 200) {
                     var project = ModrinthProjectData.read(res.body());
