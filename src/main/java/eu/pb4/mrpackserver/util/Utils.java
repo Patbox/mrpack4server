@@ -108,7 +108,8 @@ public interface Utils {
                 }
 
             } catch (Throwable e) {
-                // ignored
+                Logger.error("Found local.mrpack, but could not open it as a ZIP archive!",
+                e);
             }
         }
         return null;
