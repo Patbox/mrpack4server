@@ -94,6 +94,10 @@ Examples:
 }
 ```
 
+### Other command line arguments
+* `--noGui` or `noGui` arguments don't open the gui on supported systems
+* `--force` or `force` arguments forcefully run the modpack setup/update, even when the modpack version stays the same between runs, usally usefull in local modpack development environments 
+
 ## Securing folders/files from overriding.
 If you use mrpack4server 0.5.0 or newer, you can now create a `lockedpaths.txt` file in your main server directory.
 It will then be used to select which paths are blocked from getting updates/being overwritten.
