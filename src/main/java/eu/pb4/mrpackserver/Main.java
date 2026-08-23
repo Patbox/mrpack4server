@@ -21,11 +21,9 @@ public class Main {
         for (var arg : args) {
             if (arg.equals("nogui") || arg.equals("--nogui")) {
                 noGui = true;
-                break;
             }
             if (arg.equals("force") || arg.equals("--force")) {
                 force = true;
-                break;
             }
         }
 
