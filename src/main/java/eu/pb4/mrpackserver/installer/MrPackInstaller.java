@@ -54,59 +54,59 @@ public class MrPackInstaller {
                 Files.walkFileTree(path, new FileVisitor<Path>() {
                     @Override
                     public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                        var local = path.relativize(dir).toString();
-                        var p = destination.resolve(local).normalize();
-                        if (!p.startsWith(destination.toAbsolutePath())) {
-                            Logger.error("Modpack contains files, that are placed outside of server's root! Found '%s'", local);
+                        var localPath = path.relativize(dir).toString();
+                        var outPath = destination.resolve(localPath).normalize();
+                        if (!outPath.startsWith(destination.toAbsolutePath())) {
+                            Logger.error("Modpack contains files, that are placed outside of server's root! Found '%s'", localPath);
                             return FileVisitResult.TERMINATE;
                         }
 
-                        if (nonOverwritablePaths.contains(local) && Files.exists(p)) {
-                            Logger.warn("Skipping non-overwritable path: %s", path);
+                        if (nonOverwritablePaths.contains(localPath) && Files.exists(outPath)) {
+                            Logger.warn("Skipping non-overwritable path: %s", localPath);
                             return FileVisitResult.SKIP_SUBTREE;
                         }
-                        Files.createDirectories(p);
+                        Files.createDirectories(outPath);
                         return FileVisitResult.CONTINUE;
                     }
 
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                        var local = path.relativize(file).toString();
-                        var outPath = destination.resolve(local);
-                        if (!outPath.startsWith(destination.toAbsolutePath())) {
-                            Logger.error("Modpack contains files, that are placed outside of server's root! Found '%s'", local);
+                        var localFile = path.relativize(file).toString();
+                        var outFile = destination.resolve(localFile);
+                        if (!outFile.startsWith(destination.toAbsolutePath())) {
+                            Logger.error("Modpack contains files, that are placed outside of server's root! Found '%s'", localFile);
                             return FileVisitResult.TERMINATE;
                         }
 
-                        if (nonOverwritablePaths.contains(local) && Files.exists(file)) {
-                            Logger.warn("Skipping non-overwritable file: %s", path);
+                        if (nonOverwritablePaths.contains(localFile) && Files.exists(outFile)) {
+                            Logger.warn("Skipping non-overwritable file: %s", localFile);
                             return FileVisitResult.CONTINUE;
                         }
 
-                        var oldHash = oldHashes.get(local);
+                        var oldHash = oldHashes.get(localFile);
                         var hashType = oldHash != null ? oldHash.type() : Constants.DEFAULT_HASH;
-                        var ext = existingHashes.remove(local);
-                        var existingHash = ext != null ? ext : getHash(hashType, outPath);
+                        var ext = existingHashes.remove(localFile);
+                        var existingHash = ext != null ? ext : getHash(hashType, outFile);
                         var newHash = getHash(hashType, file);
 
                         assert newHash != null;
 
                         if (existingHash != null) {
                             if ((oldHash != null && oldHash.equals(newHash) || newHash.equals(existingHash))) {
-                                newHashes.put(local, newHash);
+                                newHashes.put(localFile, newHash);
                                 return FileVisitResult.CONTINUE;
                             } else if (oldHash != null && !oldHash.equals(existingHash)) {
-                                var oldFilePath = destinationOldModified.resolve(local);
+                                var oldFilePath = destinationOldModified.resolve(localFile);
                                 Files.createDirectories(oldFilePath.getParent());
                                 Files.deleteIfExists(oldFilePath);
-                                Files.move(outPath, oldFilePath);
-                                Logger.info("File '%s' was modified, but modpack required it to be updated! Moving it to '%s'", local, "old_modified_files/" + local);
+                                Files.move(outFile, oldFilePath);
+                                Logger.info("File '%s' was modified, but modpack required it to be updated! Moving it to '%s'", localFile, "old_modified_files/" + localFile);
                             }
-                            Files.deleteIfExists(outPath);
+                            Files.deleteIfExists(outFile);
                         }
 
-                        Files.copy(file, outPath, StandardCopyOption.REPLACE_EXISTING);
-                        newHashes.put(local, newHash);
+                        Files.copy(file, outFile, StandardCopyOption.REPLACE_EXISTING);
+                        newHashes.put(localFile, newHash);
                         return FileVisitResult.CONTINUE;
                     }
 

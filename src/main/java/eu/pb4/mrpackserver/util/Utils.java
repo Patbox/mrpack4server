@@ -149,6 +149,14 @@ public interface Utils {
             try {
                 if (Files.exists(customNonOverwritable)) {
                     for (var x : Files.readAllLines(customNonOverwritable)) {
+
+                        // a `!` symbol in front of a path allows default non-overwritable paths being overwritten
+                        boolean overwritable = false;
+                        if (x.startsWith("!")) {
+                            x = x.substring(1);
+                            overwritable = true;
+                        }
+
                         if (x.startsWith("/")) {
                             x = x.substring(1);
                         }
@@ -160,7 +168,11 @@ public interface Utils {
                             continue;
                         }
 
-                        nonOverwritablePaths.add(x);
+                        if (!overwritable) {
+                            nonOverwritablePaths.add(x);
+                        } else {
+                            nonOverwritablePaths.remove(x);
+                        }
                     }
                 }
             } catch (Throwable ignored) {
