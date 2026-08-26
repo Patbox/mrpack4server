@@ -23,7 +23,7 @@ public class Constants {
     public static final String FABRIC_INSTALLER_VERSIONS = "https://meta.fabricmc.net/v2/versions/installer";
     public static final String MODRINTH_API = "https://api.modrinth.com/v2";
     public static final String MODRINTH_API_VERSIONS = MODRINTH_API + "/project/{PROJECT_ID}/version";
-    public static final List<String> OVERWRITES = List.of("/overrides", "/server_overrides");
+    public static final List<String> OVERWRITES = List.of("/overrides", "/server_overrides", "/server-overrides");
     public static final List<String> DEFAULT_NON_OVERWRITABLE = List.of(
             "server.properties",
             "world",
