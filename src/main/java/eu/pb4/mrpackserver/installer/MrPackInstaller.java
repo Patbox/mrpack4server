@@ -127,6 +127,12 @@ public class MrPackInstaller {
 
     public boolean checkJavaVersion() {
         var minecraft = this.index.dependencies.get(Constants.MINECRAFT);
+
+        if (FlexVerComparator.compare(minecraft, "26.1-") >= 0 && !JavaVersion.IS_JAVA_25) {
+            Logger.error("Minecraft %s! only supports Java 25 or newer! You are currently using Java %s!", minecraft, Runtime.version().feature());
+            return false;
+        }
+
         if (!minecraft.startsWith("1.")) {
             return true;
         }
@@ -134,7 +140,7 @@ public class MrPackInstaller {
         if (FlexVerComparator.compare(minecraft, "1.20.5-") >= 0 && !JavaVersion.IS_JAVA_21) {
             Logger.error("Minecraft %s! only supports Java 21 or newer! You are currently using Java %s!", minecraft, Runtime.version().feature());
             return false;
-        }else if (FlexVerComparator.compare(minecraft, "1.18-") >= 0 && !JavaVersion.IS_JAVA_17) {
+        } else if (FlexVerComparator.compare(minecraft, "1.18-") >= 0 && !JavaVersion.IS_JAVA_17) {
             Logger.error("Minecraft %s only supports Java 17 or newer! You are currently using Java %s!", minecraft, Runtime.version().feature());
             return false;
         } else if (FlexVerComparator.compare(minecraft, "1.17-") >= 0 && !JavaVersion.IS_JAVA_16) {

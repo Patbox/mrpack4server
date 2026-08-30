@@ -5,4 +5,5 @@ public interface JavaVersion {
     boolean IS_JAVA_16 = Runtime.version().feature() >= 16;
     boolean IS_JAVA_17 = Runtime.version().feature() >= 17;
     boolean IS_JAVA_21 = Runtime.version().feature() >= 21;
+    boolean IS_JAVA_25 = Runtime.version().feature() >= 25;
 }
