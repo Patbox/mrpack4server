@@ -23,7 +23,7 @@ If neither of these is found, it will ask you to either provide link, project id
 and then the version of it (suggesting latest one), which will be used to create local `modpack-info.json` file. 
 You can then either update target version by editing it or by removing the file and rerunning the initial setup.
 
-Default/main jar only supports Java 21 (`mrpack4server-X.Y.Z.jar`). If you want to run it on older Java version you can use:
+Default/main jar supports Java 21 and above (`mrpack4server-X.Y.Z.jar`). If you want to run it on older Java version you can use:
 - `mrpack4server-X.Y.Z-jvm8.jar` for Java 8 and above,
 - `mrpack4server-X.Y.Z-jvm16.jar` for Java 16 and above,
 - `mrpack4server-X.Y.Z-jvm17.jar` for Java 17 and above.

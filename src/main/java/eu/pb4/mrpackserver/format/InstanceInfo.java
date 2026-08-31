@@ -9,6 +9,7 @@ public class InstanceInfo {
     public String projectId = "";
     public String versionId = "";
     public String runnablePath = "";
+    public String fileId = null;
 
     public boolean forceSystemClasspath = false;
 

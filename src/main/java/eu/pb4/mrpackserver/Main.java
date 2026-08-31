@@ -79,7 +79,10 @@ public class Main {
                     modpackInfo.url = version.uri();
                     modpackInfo.size = version.size();
                     modpackInfo.sha512 = version.hashes().get(Constants.MODRINTH_HASH);
+                    modpackInfo.fileId = version.versionId();
                 }
+            } else {
+
             }
 
             if (runLogic && (!modpackInfo.projectId.equals(instanceInfo.projectId) || !modpackInfo.versionId.equals(instanceInfo.versionId) || instanceInfo.runnablePath.isEmpty())) {

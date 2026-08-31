@@ -21,6 +21,9 @@ public class ModrinthModpackVersion {
     public String id = "";
 
     public List<File> files = List.of();
+    public List<String> loaders = List.of();
+    @SerializedName("game_versions")
+    public List<String> gameVersions = List.of();
 
     public static List<ModrinthModpackVersion> read(String s) {
         return Utils.GSON_MAIN.fromJson(s, TYPE.getType());

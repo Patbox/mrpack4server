@@ -31,7 +31,8 @@ shadowJar {
                 'Main-Class': 'eu.pb4.mrpackserver.Main',
                 'Launcher-Agent-Class': 'eu.pb4.mrpackserver.util.InstrumentationCatcher',
                 'Agent-Class': 'eu.pb4.mrpackserver.util.InstrumentationCatcher',
-                'Premain-Class': 'eu.pb4.mrpackserver.util.InstrumentationCatcher'
+                'Premain-Class': 'eu.pb4.mrpackserver.util.InstrumentationCatcher',
+                'Enable-Native-Access': 'ALL-UNNAMED'
     }
     relocate 'com.google.gson', 'eu.pb4.mrpackserver.lib.gson'
     minimize()

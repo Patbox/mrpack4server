@@ -42,6 +42,10 @@ public class ModpackInfo {
     @SerializedName("skip_java_version_check")
     public Boolean skipJavaVersionCheck = null;
 
+    @SerializedName("file_id")
+    @Nullable
+    public String fileId = null;
+
     public boolean isValid() {
         return !this.projectId.isBlank() && !this.versionId.isBlank();
     }

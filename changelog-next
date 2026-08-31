@@ -1,9 +1,5 @@
-- Added simple UI visible when running the jar directly on systems with graphics.
-  - Pretty much just a console window, with input still being text based.
-  - It will close once Minecraft opens it's own server window.
-  - Can be disabled by providing `--noGui` or `noGui` option, just like vanilla server.
-- Modpack info files can now define non-overwritable files (prevents modification if they already exist).
-- You can now add custom non-overridable files/folders as a new-line separated list in `lockedpaths.txt` file in main server directory.
-- When running standalone, selecting a project will now validate if it's actually a modpack.
-- When providing modpack slug/link, you can now force it to always search by prefixing the input with question mark (for example providing `polymania` will auto-select the Polymania modpack, while `?polymania` will search for the modpacks).
-- Removed `mrpack4server` text from log prefix, as it was redundant.
+- Validate Java version for 26.1 (Java 25 requirement).
+- Add support for modrinth-download-meta.
+- Enable native access by default to prevent warnings, matching Fabric's behaviour.
+- Update NeoForge's ServerStarterJar version from 0.1.25 to 0.1.35
+- Fixed server-overrides not working correctly

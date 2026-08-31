@@ -25,7 +25,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public interface Utils {
     Gson GSON_MAIN = new GsonBuilder().disableHtmlEscaping().registerTypeHierarchyAdapter(HashData.class, new HashData.Serializer()).create();
@@ -116,12 +118,16 @@ public interface Utils {
     }
 
     static InstallResult checkAndSetupModpack(ModpackInfo modpackInfo, InstanceInfo instance, Path currentDir, Path instanceDataDir) throws Throwable {
-        var mrpackFile = getMrPackFile(modpackInfo, instanceDataDir);
+        var mrpackFile = getMrPackFile(modpackInfo, instanceDataDir, instance.projectId.equals(modpackInfo.projectId), instance.fileId);
         if (mrpackFile == null) {
             return null;
         }
 
-        try (var zip = FileSystems.newFileSystem(mrpackFile)) {
+        if (modpackInfo.fileId == null) {
+            modpackInfo.fileId = mrpackFile.id();
+        }
+
+        try (var zip = FileSystems.newFileSystem(mrpackFile.path())) {
             var index = ModpackIndex.read(Files.readString(zip.getPath("modrinth.index.json")));
 
             { // Safety validation
@@ -170,7 +176,7 @@ public interface Utils {
 
             Logger.info("Starting %s of %s (%s)", hashes.isEmpty() ? "installation" : "update", modpackInfo.getDisplayName(), modpackInfo.getDisplayVersion());
 
-            var handler = new MrPackInstaller(zip.getPath(""), index, currentDir, instance, hashes, whitelistedDomains, nonOverwritablePaths);
+            var handler = new MrPackInstaller(modpackInfo.fileId, zip.getPath(""), index, currentDir, instance, hashes, whitelistedDomains, nonOverwritablePaths);
 
             if (modpackInfo.skipJavaVersionCheck != Boolean.TRUE && !handler.checkJavaVersion()) {
                 return null;
@@ -178,14 +184,22 @@ public interface Utils {
 
             handler.prepareFolders();
             var localExistingHashes = handler.getLocalFileUpdatedHashes();
-            var x = new FileDownloader();
-            handler.requestDownloads(x, localExistingHashes);
-            if (!x.isEmpty()) {
+            var downloader = new FileDownloader();
+            downloader.setDownloadMeta(handler.createDownloadMeta());
+
+            handler.requestDownloads(downloader, localExistingHashes);
+            if (!downloader.isEmpty()) {
                 Logger.info("Downloading remote modpack files...");
-                var failed = x.downloadFiles(handler.getHashes());
+                var failed = downloader.downloadFiles(handler.getHashes());
                 if (!failed.isEmpty()) {
-                    Logger.error("Failed to download provided files: \n- " + String.join("\n- ", failed));
-                    return null;
+                    Logger.error("Failed to download provided files: \n- " + failed.stream().map(FileDownloader.DownloadableEntry::displayName).collect(Collectors.joining("\n- ")));
+                    Logger.info("Waiting for 5 seconds before retrying...");
+                    Thread.sleep(5000);
+                    failed = downloader.downloadFiles(handler.getHashes());
+                    if (!failed.isEmpty()) {
+                        Logger.error("Failed to download provided files: \n- " + failed.stream().map(FileDownloader.DownloadableEntry::displayName).collect(Collectors.joining("\n- ")));
+                        return null;
+                    }
                 }
                 Logger.info("Finished downloading remote modpack files!");
             }
@@ -202,6 +216,7 @@ public interface Utils {
             newInstance.forceSystemClasspath = handler.getNewLauncher() != null ? handler.forceSystemClasspath() : instance.forceSystemClasspath;
             newInstance.runnablePath = Objects.requireNonNullElse(handler.getNewLauncher(), instance.runnablePath);
             newInstance.dependencies.putAll(index.dependencies);
+            newInstance.fileId = modpackInfo.fileId;
 
             if (handler.getInstaller() != null) {
                 var installer = handler.getInstaller();
@@ -248,20 +263,23 @@ public interface Utils {
     }
 
     @Nullable
-    static Path getMrPackFile(ModpackInfo modpackInfo, Path instanceDataDir) {
+    static PackFile getMrPackFile(ModpackInfo modpackInfo, Path instanceDataDir, boolean isUpdating, String fileId) {
         if (modpackInfo.url != null && modpackInfo.url.getScheme().equals("file")) {
-            return Path.of(modpackInfo.url);
+            return new PackFile(Path.of(modpackInfo.url), null);
         }
 
         var name = "modpack/" + modpackInfo.projectId + "_" + modpackInfo.versionId + ".mrpack";
 
         var modpackFile = instanceDataDir.resolve(name);
         if (Files.exists(modpackFile)) {
-            return modpackFile;
+            return new PackFile(modpackFile, null);
         }
         URI uri;
         long size;
         String hash;
+        String id = null;
+        String loader = "";
+        String gameVersion = "";
         if (modpackInfo.url != null) {
             uri = modpackInfo.url;
             size = modpackInfo.size != null ? modpackInfo.size : -1;
@@ -275,14 +293,19 @@ public interface Utils {
             uri = result.uri();
             size = result.size();
             hash = result.hashes().get(Constants.MODRINTH_HASH);
+            id = result.versionId();
+            loader = result.loader();
+            gameVersion = result.gameVersion();
         }
 
         try {
             Files.createDirectories(modpackFile.getParent());
-            var req = createHttpClient().send(createGetRequest(uri), HttpResponse.BodyHandlers.ofInputStream());
+            var req = createHttpClient().send(createGetRequest(uri,
+                    new DownloadMeta(isUpdating ? DownloadMeta.Reason.UPDATE : DownloadMeta.Reason.STANDALONE, gameVersion, loader, fileId)),
+                    HttpResponse.BodyHandlers.ofInputStream());
             var x = handleDownloadedFile(modpackFile, req.body(), name, size, hash != null ? HashData.read(Constants.DEFAULT_HASH, hash) : null);
             if (x != null) {
-                return modpackFile;
+                return new PackFile(modpackFile, id);
             }
         } catch (Throwable e) {
             Logger.error("Failed to locate source mrpack file!", e);
@@ -353,7 +376,19 @@ public interface Utils {
     }
 
     static HttpClient createHttpClient() {
-        return HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build();
+        return HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).connectTimeout(Duration.ofSeconds(Constants.DOWNLOAD_TIMEOUT)).build();
+    }
+
+    static HttpRequest createGetRequest(URI uri, @Nullable DownloadMeta meta) {
+        if (meta == null || !uri.getHost().endsWith(".modrinth.com")) {
+            return createGetRequest(uri);
+        }
+
+        return HttpRequest.newBuilder(uri)
+                .setHeader("User-Agent", Constants.USER_AGENT)
+                .setHeader("modrinth-download-meta", meta.toString())
+                .GET()
+                .build();
     }
 
     static HttpRequest createGetRequest(URI uri) {
@@ -421,6 +456,7 @@ public interface Utils {
             } else {
                 var client = Utils.createHttpClient();
                 HttpResponse<String> res;
+
                 if (data.charAt(0) == '?') {
                     data = data.substring(1);
                     res = null;
@@ -498,6 +534,7 @@ public interface Utils {
             if (description != null && !description.isEmpty()) {
                 Logger.info("Description: %s", description);
             }
+            String fileId = null;
 
             if (requestVersion) {
                 var versions = ModrinthModpackLookup.getVersions(newInfo.getVersionListUrl(), newInfo.projectId, newInfo.getDisplayName());
@@ -511,7 +548,8 @@ public interface Utils {
                     Logger.label(">");
                     data = scanner.nextLine();
                     if (data.isEmpty()) {
-                        data = versions.get(0).versionNumber;
+                        data = versions.getFirst().versionNumber;
+                        fileId = versions.getFirst().id;
                         break;
                     }
 
@@ -529,12 +567,14 @@ public interface Utils {
 
                     if (ver != null) {
                         data = ver.versionNumber;
+                        fileId = ver.id;
                         break;
                     }
                     Logger.error("%s is not a valid version of this modpack!: ", data);
                 }
 
                 newInfo.versionId = data;
+                newInfo.fileId = fileId;
             }
 
             if (!newInfo.versionId.isEmpty()) {
@@ -548,4 +588,6 @@ public interface Utils {
     }
 
     record InstallResult(InstanceInfo info, Runnable installer) {}
+
+    record PackFile(Path path, @Nullable String id) {}
 }

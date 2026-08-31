@@ -8,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
 import java.net.URI;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 public interface ModrinthModpackLookup {
@@ -34,7 +33,9 @@ public interface ModrinthModpackLookup {
             }
             return null;
         }
-        return new Result(version.get().id, version.get().versionNumber, file.get().url, file.get().size, file.get().hashes);
+        return new Result(version.get().id, version.get().versionNumber, file.get().url, file.get().size, file.get().hashes,
+                version.get().loaders.isEmpty() ? "" : version.get().loaders.getFirst(),
+                version.get().gameVersions.isEmpty() ? "" : version.get().gameVersions.getFirst());
     }
 
     @Nullable
@@ -54,5 +55,5 @@ public interface ModrinthModpackLookup {
         }
     }
 
-    record Result(String versionId, String versionNumber, URI uri, long size, java.util.Map<String, String> hashes) {};
+    record Result(String versionId, String versionNumber, URI uri, long size, java.util.Map<String, String> hashes, String loader, String gameVersion) {};
 }

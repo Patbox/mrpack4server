@@ -12,6 +12,7 @@ import java.security.MessageDigest;
 import java.util.*;
 
 public class MrPackInstaller {
+    private final String modrinthVersionId;
     private final Path source;
     private final ModpackIndex index;
     private final Path destination;
@@ -27,7 +28,8 @@ public class MrPackInstaller {
     private Installer installer;
     private boolean forceSystemClasspath = false;
 
-    public MrPackInstaller(Path source, ModpackIndex index, Path destination, InstanceInfo data, HashMap<String, HashData> hashes, Set<String> whitelistedDomains, HashSet<String> nonOverwritablePaths) throws IOException {
+    public MrPackInstaller(String modrinthVersionId, Path source, ModpackIndex index, Path destination, InstanceInfo data, HashMap<String, HashData> hashes, Set<String> whitelistedDomains, HashSet<String> nonOverwritablePaths) throws IOException {
+        this.modrinthVersionId = modrinthVersionId;
         this.source = source;
         this.index = index;
         this.currentInstanceData = data;
@@ -137,7 +139,10 @@ public class MrPackInstaller {
             return true;
         }
 
-        if (FlexVerComparator.compare(minecraft, "1.20.5-") >= 0 && !JavaVersion.IS_JAVA_21) {
+        if (FlexVerComparator.compare(minecraft, "26.1-") >= 0 && !JavaVersion.IS_JAVA_25) {
+            Logger.error("Minecraft %s! only supports Java 25 or newer! You are currently using Java %s!", minecraft, Runtime.version().feature());
+            return false;
+        } else if (FlexVerComparator.compare(minecraft, "1.20.5-") >= 0 && !JavaVersion.IS_JAVA_21) {
             Logger.error("Minecraft %s! only supports Java 21 or newer! You are currently using Java %s!", minecraft, Runtime.version().feature());
             return false;
         } else if (FlexVerComparator.compare(minecraft, "1.18-") >= 0 && !JavaVersion.IS_JAVA_17) {
@@ -158,6 +163,7 @@ public class MrPackInstaller {
     public void requestDownloads(FileDownloader downloader, Map<String, HashData> hashExisting) throws Exception {
         if (this.currentInstanceData.runnablePath.isEmpty() || !this.currentInstanceData.dependencies.equals(this.index.dependencies) || !Files.exists(this.destination.resolve(this.currentInstanceData.runnablePath))) {
             var mcVersion = this.index.dependencies.get(Constants.MINECRAFT);
+
             if (mcVersion == null) {
                 Logger.warn("Minecraft version is not set!");
                 Logger.warn("The modpack will be still installed, but it won't be able to start!");
@@ -199,7 +205,6 @@ public class MrPackInstaller {
             } else if (this.index.dependencies.containsKey(Constants.FORGE)) {
                 this.forceSystemClasspath = true;
                 var version = this.index.dependencies.get(Constants.FORGE);
-
                 var installer = ForgeInstallerLookup.download(downloader, this.destination, mcVersion, version);
                 if (installer != null) {
                     this.installer = new Installer("Forge Server Installer", installer.name(), "--installServer");
@@ -241,6 +246,7 @@ public class MrPackInstaller {
             if (this.installer != null) {
                 hashExisting.remove(this.installer.path);
             }
+
             if (this.newLauncher != null) {
                 hashExisting.remove(this.newLauncher);
             }
@@ -371,6 +377,23 @@ public class MrPackInstaller {
 
     public boolean forceSystemClasspath() {
         return this.forceSystemClasspath;
+    }
+
+    public DownloadMeta createDownloadMeta() {
+        var mcVersion = this.index.dependencies.getOrDefault(Constants.MINECRAFT, "unknown");
+        var loader = "unknown";
+        if (this.index.dependencies.size() == 1) {
+            loader = "vanilla";
+        } else {
+            for (var l : Constants.MOD_LOADERS) {
+                if (this.index.dependencies.containsKey(l)) {
+                    loader = l;
+                    break;
+                }
+            }
+        }
+
+        return new DownloadMeta(DownloadMeta.Reason.MODPACK, mcVersion, loader, this.modrinthVersionId);
     }
 
     public record Installer(String name, String path, String... args) {}

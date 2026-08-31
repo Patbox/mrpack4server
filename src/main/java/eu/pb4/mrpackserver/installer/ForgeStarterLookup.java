@@ -13,8 +13,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 public interface ForgeStarterLookup {
-    String VERSION = "0.1.25";
-    String STARTER_URL = "https://github.com/neoforged/ServerStarterJar/releases/download/0.1.25/server.jar";
+    String VERSION = "0.1.35";
+    String STARTER_URL = "https://github.com/neoforged/ServerStarterJar/releases/download/" + VERSION + "/server.jar";
 
     static String createName() {
         return Constants.DATA_FOLDER + "/server/forge_starter_" + VERSION + ".jar";
