@@ -17,10 +17,13 @@ public class Main {
         System.setProperty("log4j2.formatMsgNoLookups", "true");
 
         boolean noGui = false;
+        boolean force = false;
         for (var arg : args) {
             if (arg.equals("nogui") || arg.equals("--nogui")) {
                 noGui = true;
-                break;
+            }
+            if (arg.equals("force") || arg.equals("--force")) {
+                force = true;
             }
         }
 
@@ -85,7 +88,7 @@ public class Main {
 
             }
 
-            if (runLogic && (!modpackInfo.projectId.equals(instanceInfo.projectId) || !modpackInfo.versionId.equals(instanceInfo.versionId) || instanceInfo.runnablePath.isEmpty())) {
+            if (runLogic && (!modpackInfo.projectId.equals(instanceInfo.projectId) || !modpackInfo.versionId.equals(instanceInfo.versionId) || instanceInfo.runnablePath.isEmpty() || force)) {
                 Files.createDirectories(instanceData);
                 var newInstance = Utils.checkAndSetupModpack(modpackInfo, instanceInfo, runPath, instanceData);
                 if (newInstance != null) {
