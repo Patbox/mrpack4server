@@ -3,7 +3,7 @@ mrpack4server is a "server launcher" that allows you to easily install and run a
 (or one that's exported in `.mrpack` format) as a Minecraft Server on your local machine or any hosting provider that supports custom jars.
 This tool doesn't require any additional arguments and can work as any other server jar (like vanilla provided one).
 
-## Features:
+## Features
 - For any users, usable standalone, for setup of any modpack by defining a single file.
 - For modpack makers, allowing quick server setup by having to just download and run a single file.
 - Automatically downloads required mrpack files and any mods / external assets defined by modpack.
@@ -11,7 +11,7 @@ This tool doesn't require any additional arguments and can work as any other ser
 Quilt Loader, Forge and NeoForge.
 If used with modpack for other unsupported platforms, it will still install everything, but won't be able to launch.
 
-## Usage:
+## Usage
 The file is run just like any other Minecraft server (`java -jar mrpack4server.jar`) and will use / pass
 through any arguments given to it. When used on its own, it first looks in 3 places for modpack definition:
 - `modpack-info.json` included within jar itself, useful for modpack makers. See below for definition,
@@ -94,7 +94,7 @@ Examples:
 }
 ```
 
-## Securing folders/files from overriding.
+## Securing folders/files from overriding
 If you use mrpack4server 0.5.0 or newer, you can now create a `lockedpaths.txt` file in your main server directory.
 It will then be used to select which paths are blocked from getting updates/being overwritten.
 
@@ -110,3 +110,12 @@ By default, these paths are secured:
 - `ops.json`
 - `.mrpack4server` folder
 - `lockedpaths.txt`
+
+### Allow overriding of secured folders/files
+Using `!` as prefix in `lockedpaths.txt` of above-listed paths/files allows these to be overwritten again.
+
+Example `lockedpaths.txt` file, to allow overwriting of `server.properties` and `ops.json` files.
+```
+!server.properties
+!ops.json
+```
