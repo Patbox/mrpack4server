@@ -206,16 +206,17 @@ public class MrPackInstaller {
                 this.forceSystemClasspath = true;
                 var version = this.index.dependencies.get(Constants.FORGE);
                 var installer = ForgeInstallerLookup.download(downloader, this.destination, mcVersion, version);
-                if (installer != null) {
-                    this.installer = new Installer("Forge Server Installer", installer.name(), "--installServer");
+                if (installer == null) {
+                    throw new IOException("Failed to resolve a valid Forge installer for Minecraft " + mcVersion + " / Forge " + version);
                 }
+                this.installer = new Installer("Forge Server Installer", installer.name(), "--installServer");
                 if (FlexVerComparator.compare(mcVersion, "1.17.0") >= 0) {
                     var starter = ForgeStarterLookup.download(downloader, this.destination);
                     if (starter != null) {
                         this.newLauncher = starter.name();
                     }
                 } else {
-                    this.newLauncher = "forge-" + mcVersion + "-" + version + ".jar";
+                    this.newLauncher = installer.serverJarName();
                 }
             } else if (this.index.dependencies.containsKey(Constants.QUILT)) {
                 this.forceSystemClasspath = true;

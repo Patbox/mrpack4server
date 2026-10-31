@@ -28,6 +28,7 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.jar.JarFile;
 
 public interface Utils {
     Gson GSON_MAIN = new GsonBuilder().disableHtmlEscaping().registerTypeHierarchyAdapter(HashData.class, new HashData.Serializer()).create();
@@ -317,6 +318,10 @@ public interface Utils {
 
 
     static @Nullable HashData handleDownloadedFile(Path out, InputStream body, String displayName, long fileSize, @Nullable HashData hashData) {
+        return handleDownloadedFile(out, body, displayName, fileSize, hashData, false);
+    }
+
+    static @Nullable HashData handleDownloadedFile(Path out, InputStream body, String displayName, long fileSize, @Nullable HashData hashData, boolean jar) {
         var tmpOut = out.getParent().resolve(out.getFileName().toString() + ".mrpack4server.tmp");
         try {
             Files.deleteIfExists(tmpOut);
@@ -347,12 +352,13 @@ public interface Utils {
             }
             file.flush();
             var hash = stream.getMessageDigest().digest();
-            if (hashData == null || Arrays.equals(hashData.hash(), hash)) {
+            if ((hashData == null || Arrays.equals(hashData.hash(), hash)) && (!jar || isValidJar(tmpOut))) {
                 success = true;
                 Logger.info("Finished downloading file '%s' successfully!", displayName);
                 return new HashData(hashType, hash);
             } else {
-                Logger.warn("Couldn't validate file '%s'! Expected hash: %s, got: %s", displayName, hashData.hashString(), HexFormat.of().formatHex(hash));
+                Logger.warn("Couldn't validate file '%s'! Expected hash: %s, got: %s", displayName,
+                        hashData != null ? hashData.hashString() : "a valid JAR", HexFormat.of().formatHex(hash));
                 return null;
             }
         } catch (Throwable e) {
@@ -372,6 +378,15 @@ public interface Utils {
                     Logger.error("Failed to remove temporary file '%s'!", tmpOut, e);
                 }
             }
+
+        }
+    }
+
+    static boolean isValidJar(Path path) {
+        try (var ignored = new JarFile(path.toFile())) {
+            return true;
+        } catch (Throwable e) {
+            return false;
         }
     }
 

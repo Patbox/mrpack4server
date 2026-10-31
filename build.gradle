@@ -17,6 +17,12 @@ repositories {
 dependencies {
     implementation shadow('com.google.code.gson:gson:2.2.4')
     compileOnly 'org.jetbrains:annotations:24.1.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 shadowJar {

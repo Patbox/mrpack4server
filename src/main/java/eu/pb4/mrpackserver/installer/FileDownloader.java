@@ -25,7 +25,11 @@ public final class FileDownloader {
     }
 
     public void request(Path out, String path, String displayName, long fileSize, @Nullable HashData hashData, List<URI> downloads) {
-        this.entries.add(new DownloadableEntry(out, path, displayName, fileSize, hashData, downloads));
+        this.entries.add(new DownloadableEntry(out, path, displayName, fileSize, hashData, downloads, false));
+    }
+
+    public void requestJar(Path out, String path, String displayName, long fileSize, @Nullable HashData hashData, List<URI> downloads) {
+        this.entries.add(new DownloadableEntry(out, path, displayName, fileSize, hashData, downloads, true));
     }
 
     public void setDownloadMeta(@Nullable DownloadMeta downloadMeta) {
@@ -58,6 +62,17 @@ public final class FileDownloader {
                     Utils.createGetRequest(entry.downloads.get(0), this.downloadMeta),
                     HttpResponse.BodyHandlers.ofInputStream()
             ).thenAccept(x -> {
+                if (!isSuccessfulResponse(x)) {
+                    try {
+                        x.body().close();
+                    } catch (Exception ignored) {
+                    }
+                    synchronized (failedDownloads) {
+                        failedDownloads.add(entry);
+                    }
+                    return;
+                }
+
                 var fileSize = entry.fileSize;
                 if (fileSize == -1) {
                     var headerSize = x.headers().firstValue("Content-Length");
@@ -70,7 +85,7 @@ public final class FileDownloader {
                     }
                 }
 
-                var hash = Utils.handleDownloadedFile(entry.out, x.body(), entry.displayName, fileSize, entry.hashData);
+                var hash = Utils.handleDownloadedFile(entry.out, x.body(), entry.displayName, fileSize, entry.hashData, entry.jar);
                 if (hash != null) {
                     synchronized (hashes) {
                         hashes.put(entry.path, hash);
@@ -95,5 +110,12 @@ public final class FileDownloader {
         return failedDownloads;
     }
 
-    public record DownloadableEntry(Path out, String path, String displayName, long fileSize, @Nullable HashData hashData, List<URI> downloads) {}
+    public record DownloadableEntry(Path out, String path, String displayName, long fileSize, @Nullable HashData hashData, List<URI> downloads, boolean jar) {}
+
+    static boolean isSuccessfulResponse(HttpResponse<?> response) {
+        return response.statusCode() >= 200 && response.statusCode() < 300
+                && response.headers().firstValue("Content-Type")
+                .map(x -> !x.toLowerCase(Locale.ROOT).contains("text/html"))
+                .orElse(true);
+    }
 }
